@@ -1,0 +1,30 @@
+{
+  "name": "BrainrotCheckpointObby",
+  "tree": {
+    "$className": "DataModel",
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "GameServer": {
+        "$path": "src/ServerScriptService/GameServer.server.luau"
+      },
+      "DataManager": {
+        "$path": "src/ServerScriptService/DataManager.luau"
+      }
+    },
+    "StarterGui": {
+      "$className": "StarterGui",
+      "ObbyHUD": {
+        "$path": "src/StarterGui/ObbyHUD.client.luau"
+      }
+    },
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "ObbyClient": {
+          "$path": "src/StarterPlayerScripts/ObbyClient.client.luau"
+        }
+      }
+    }
+  }
+}
