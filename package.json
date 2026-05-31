@@ -1,0 +1,20 @@
+{
+  "name": "brainrot-checkpoint-obby",
+  "version": "1.0.0",
+  "description": "Brainrot Checkpoint Obby - Authoritative server obby core loop for Roblox",
+  "scripts": {
+    "dev":       "rojo serve",
+    "build":     "rojo build -o obby.rbxl",
+    "sourcemap": "rojo sourcemap default.project.json -o sourcemap.json",
+    "test":      "lune run test_signal && lune run test_datamanager",
+    "test:signal":      "lune run test_signal",
+    "test:datamanager": "lune run test_datamanager",
+    "ci":        "npm run build && npm run sourcemap && npm run test"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "devDependencies": {},
+  "keywords": ["roblox", "rojo", "luau", "obby", "game"],
+  "license": "MIT"
+}
