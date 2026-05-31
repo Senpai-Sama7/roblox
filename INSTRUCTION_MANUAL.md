@@ -1,6 +1,6 @@
-# Brainrot Checkpoint Obby — Complete Instruction Manual
+# Brainrot Checkpoint Obby — Complete Instruction Manual (S-TIER Edition)
 
-> **Made for:** Players, testers, and anyone who needs to run this game.
+> **Made for:** Players, testers, designers, and anyone who needs to run this game.
 > **Reading time:** ~10 minutes. **Follow the steps in order.**
 
 ---
@@ -20,15 +20,17 @@
 
 ## 1. What Is This Game?
 
-This is a **speedrun obstacle course (obby)** on Roblox. You run from the start to the finish line as fast as you can, touching checkpoints along the way. There are coins to collect, combos to build, daily rewards to claim, and leaderboards to climb.
+This is a **speedrun obstacle course (obby)** on Roblox. You run from start to finish as fast as you can, touching checkpoints along the way. There are coins to collect, combos to build, daily rewards to claim, trails and auras to buy, and leaderboards to climb.
 
 ### What Makes It Special?
 
-- **Combo System** — Hit checkpoints fast in a row and get a score multiplier (up to 3x!)
-- **Daily Rewards** — Come back every day for free coins
+- **Combo System** — Hit checkpoints fast in a row and get a score multiplier (up to **3.0x**!)
+- **Daily Rewards** — Come back every day for free coins (up to **120** on day 7)
 - **Monetization** — Gamepasses (2x Coins, VIP), coin packs, and Roblox Premium bonuses
-- **Anti-Cheat** — The server checks your speed and won't let you teleport
-- **S-TIER Visuals** — Bloom, vignette (dark edges), screen flashes, particle bursts, dynamic camera FOV, glassmorphism HUD
+- **Cosmetics** — Buy rainbow trails, fire trails, glow auras, and more with in-game coins
+- **Anti-Cheat** — The server checks your speed, distance, and debounces every touch type independently
+- **S-TIER Visuals** — Bloom, vignette, screen flashes, particle bursts, dynamic camera FOV, glassmorphism HUD, chromatic aberration
+- **LevelData Fallback** — Works even with imported/glTF geometry that has no tags
 
 ---
 
@@ -124,7 +126,7 @@ Start at the spawn point, hit every checkpoint in order (1, 2, 3...), then touch
 | Move | **WASD** keys |
 | Jump | **Spacebar** |
 | Reset run | Click the **RESET** button (red, top-right of the HUD) |
-| Claim daily reward | Click **CLAIM** on the daily reward popup (appears on login) |
+| Claim daily reward | Click **CLAIM** on the daily reward popup (auto-appears on login if unclaimed) |
 
 ### The HUD (What All the Numbers Mean)
 
@@ -144,8 +146,8 @@ Start at the spawn point, hit every checkpoint in order (1, 2, 3...), then touch
 └─────────────────────────────────────────────────────┘
 ```
 
-- **Timer** — Counts up while you run. The server records the final time (the timer on your screen is just for show — the server is the one that matters for the leaderboard).
-- **Combo** — Appears when you hit 2+ checkpoints within 8 seconds of each other. Colors change: Gold (3) → Orange (5) → Red (8+).
+- **Timer** — Counts up while you run. The server records the real time (your screen is just visual).
+- **Combo** — Appears when you hit 2+ checkpoints within 8 seconds of each other. Colors: Gold (3) → Orange (5) → Red (8+).
 - **Progress bar** — Fills up as you hit checkpoints.
 - **Best** — Your fastest ever run.
 - **💎 Coins** — How many coins you've collected this run, with current multiplier.
@@ -169,8 +171,9 @@ Start at the spawn point, hit every checkpoint in order (1, 2, 3...), then touch
 
 - Each checkpoint has a number (the **Order** attribute, like "1", "2", "3")
 - You must touch them **in order**. Skipping one doesn't work (the server blocks it)
-- They're tagged with `Checkpoint` in the **CollectionService** (we'll cover this later)
+- They're tagged with `Checkpoint` in the **CollectionService**
 - When you touch one, you get a particle burst, a sound, and a notification
+- **LevelData Fallback**: If your level has no tagged parts (e.g., imported from glTF), the server can spawn invisible detection parts from `LevelData.luau` instead
 
 ### Coins
 
@@ -191,20 +194,31 @@ Start at the spawn point, hit every checkpoint in order (1, 2, 3...), then touch
 
 ### Daily Rewards
 
-- Log in once per day and click **CLAIM** on the popup
+- Log in once per day and the popup **auto-appears** after 1 second
 - Base reward: **50 coins**
 - Streak bonus: **+10 coins per day** (max 7-day streak = +70)
 - Premium bonus: **+50 extra coins** if you have Roblox Premium
 - If you miss a day, your **streak resets to 0**
 - If you already claimed today, the popup says "Come back tomorrow!"
+- The streak check uses **Julian day numbers** — it correctly handles month and year boundaries (unlike simple date subtraction)
+
+### Cosmetics (Trails & Auras)
+
+- **Trails**: rainbow, fire, ice, neon, gold — each leaves a colored trail behind your character
+- **Auras**: glow, pulse, sparkle — visual effects around your character
+- Buy them with coins using the `BuyTrail` and `BuyAura` server actions
+- Once bought, they're saved to your settings and persist across sessions
+- VIP players automatically get the rainbow trail equipped
 
 ### Monetization
 
 | Type | Example | How It Works |
 |------|---------|--------------|
 | **Gamepass** (buy once, permanent) | 2x Coins, VIP | Server checks `UserOwnsGamePassAsync` on login. Applies permanent multiplier. |
-| **Developer Product** (buy repeatedly) | Coin Packs (100/500/2000) | Server gets `ProcessReceipt` callback. Adds coins to your account. The server remembers the `PurchaseId` so you never get double-spent. |
+| **Developer Product** (buy repeatedly) | Coin Packs (100/500/2000) | Server gets `ProcessReceipt` callback. Adds coins to your account. The server remembers the `PurchaseId` with a 1-hour timeout so you never get double-spent. |
 | **Roblox Premium** | +20% coins | Server checks `player.MembershipType` on login. |
+
+> **Purchase Safety**: When you buy a trail or aura, the server deducts coins and saves with `forceOverwrite = true`. This prevents the atomic merge (which normally uses `max()`) from accidentally restoring your old coin count and undoing the purchase.
 
 ### Anti-Cheat (How the Game Catches Cheaters)
 
@@ -212,14 +226,15 @@ Start at the spawn point, hit every checkpoint in order (1, 2, 3...), then touch
 2. **Same-frame check**: If you somehow travel more than 2 studs in a single frame (0.01 seconds), you're blocked. (This catches teleport hacks.)
 3. **Coin distance check**: You must be within 8 studs of a coin to collect it. Remote coin collection doesn't work.
 4. **HRP check**: If your HumanoidRootPart is missing or deleted (a common cheat), coin collection is blocked entirely.
-5. **All client actions are rate-limited**: You can only fire one action per 0.5 seconds to the server. No spamming.
-6. **Receipt deduplication**: The server remembers every Roblox purchase's `PurchaseId` so you can't get the same coin pack twice, even if Roblox retries the callback.
+5. **Per-type debouncing**: Each touch type (checkpoint, coin, finish) has its own debounce timer. Touching a coin does NOT block a checkpoint touch.
+6. **All client actions are rate-limited**: You can only fire one action per 0.5 seconds to the server. No spamming.
+7. **Receipt deduplication**: The server remembers every Roblox purchase's `PurchaseId` with a timestamp so you can't claim the same coin pack twice, even if Roblox retries the callback.
+8. **Unknown action logging**: Any unrecognized action from a client is logged with the player's name for security review.
 
 ### Leaderboard
 
 - If you set a new personal best time, the server updates the **OrderedDataStore** `ObbyLeaderboard_v1`
 - The leaderboard stores times in **hundredths of a second** (so 45.67 seconds is stored as 4567)
-- When you load the game, if the leaderboard feature were added to the HUD, it would show the top 50 times
 - The leaderboard is **global** (all servers share it)
 
 ### Data Save System
@@ -239,6 +254,8 @@ The game saves 3 separate things per player:
 >
 > This means you never lose progress even if there's a conflict.
 
+> **"forceOverwrite" for Purchases**: When you buy a trail or get a dev product, the server uses `forceOverwrite = true` to bypass the max() merge. This guarantees your coin deduction actually sticks, even if another server has a concurrent save.
+
 > **Data safety**: Every save uses `pcall` (error-protected call) with 3 retries and exponential backoff (1 second → 2 seconds → 4 seconds). If all 3 retries fail, the save is abandoned (data stays in memory and will try again on next save).
 
 ---
@@ -250,24 +267,41 @@ The game saves 3 separate things per player:
 1. Press **F5** to start playtesting
 2. Your character should appear at the spawn point
 3. Look at the HUD — you should see the timer start counting
-4. If there are no checkpoints or coins yet (you just opened the file), you'll see "Checkpoints: 0 / 0". That's normal.
+4. If there are no checkpoints or coins yet, you'll see "Checkpoints: 0 / 0". That's normal.
 
-### Testing Without a Built Level
+### Testing Without a Built Level (LevelData Fallback)
 
-The game needs 3 kinds of parts in the workspace to work:
+If you have a glTF-imported level with no tags, use the LevelData fallback:
 
-1. **Checkpoints** — Parts tagged with `Checkpoint`, with an "Order" attribute (number)
-2. **Coins** — Parts tagged with `Coin`
-3. **Finish Line** — A part tagged with `FinishLine`
+1. Open `src/ReplicatedStorage/LevelData.luau`
+2. Set `USE_FALLBACK = true`
+3. Fill in checkpoint positions, coin positions, and finish line position:
 
-If there are none of these, the game will start but you can't do anything. Here's how to test with your own parts:
+```lua
+LevelData.CHECKPOINTS = {
+    { position = Vector3.new(0, 5, 0), order = 1 },
+    { position = Vector3.new(10, 5, 0), order = 2 },
+    { position = Vector3.new(20, 5, 0), order = 3 },
+}
+LevelData.COINS = {
+    Vector3.new(5, 6, 0),
+    Vector3.new(15, 6, 0),
+}
+LevelData.FINISH_LINE = Vector3.new(30, 5, 0)
+```
+
+4. Rebuild (`rojo build -o obby.rbxl`) and re-open in Studio
+5. Press F5. The server should log: `Spawned N fallback detection parts from LevelData`
+6. Run through the course — the invisible parts work exactly like tagged parts
+
+### Testing With Tagged Parts
 
 #### Step 1: Add a Spawn Location
 
 1. Go to the **Home** tab
 2. Click **Model** → search for "SpawnLocation"
 3. Drag one into the workspace
-4. Position it at `0, 5, 0` (in the Properties panel, set Position X=0, Y=5, Z=0)
+4. Position it at `0, 5, 0`
 
 #### Step 2: Add Checkpoints
 
@@ -278,7 +312,7 @@ If there are none of these, the game will start but you can't do anything. Here'
 5. Create an attribute named `Order` with type **number**, value `1`
 6. In **Properties**, find **CollectionService** → add tag `Checkpoint`
 7. Position it `4` studs away from spawn
-8. Repeat for checkpoints 2, 3 etc. — each with increasing Order value, spaced a few studs apart
+8. Repeat for checkpoints 2, 3 etc.
 
 #### Step 3: Add Coins
 
@@ -294,7 +328,19 @@ If there are none of these, the game will start but you can't do anything. Here'
 
 #### Step 5: Playtest
 
-Press **F5**. Your character spawns, the timer starts. Run through checkpoints in order, collect coins, hit the finish line. The HUD should update with each touch.
+Press **F5**. Your character spawns, the timer starts. Run through checkpoints in order, collect coins, hit the finish line.
+
+### Using GenerateLevelData (Auto-Generate Positions)
+
+If you already have a properly tagged Studio place and want to export the positions:
+
+1. Copy `src/ServerScriptService/GenerateLevelData.luau` into `ServerScriptService` in Studio
+2. Run the game in Studio
+3. Check the **Output** window — you'll see a complete `LevelData.luau` module printed
+4. Copy that output and paste it into `src/ReplicatedStorage/LevelData.luau`
+5. Rebuild with Rojo
+
+This is useful when your level designer builds the course in Studio and you want to generate the fallback code for the Rojo pipeline.
 
 ### Testing Monetization (Simulate Purchases)
 
@@ -323,7 +369,7 @@ Roblox Studio lets you pretend to buy things without spending real money:
 2. Set it to **2 Players** (or more)
 3. Click **Start**
 4. Multiple Studio windows open — each is a different player
-5. You can race yourself! Check that each player's coins, combos, and times are **independent** (they should be, because each has their own `playerState` on the server)
+5. You can race yourself! Check that each player's coins, combos, and times are **independent**
 
 ### Testing Combo System
 
@@ -336,7 +382,7 @@ Roblox Studio lets you pretend to buy things without spending real money:
 ### Testing Daily Rewards
 
 1. Start playtest
-2. After 1 second, the server sends `DataLoaded` to the client
+2. After 1 second, the server auto-checks your daily reward status
 3. If you haven't claimed today, the **Daily Reward** popup slides in from the top
 4. Click **CLAIM**
 5. The popup disappears, coins are added
@@ -344,6 +390,18 @@ Roblox Studio lets you pretend to buy things without spending real money:
 7. The button text changes to **"CLOSE"** — click it to dismiss the popup
 
 > **Note**: In Studio testing, "today" is your computer's current date. If you want to test streak mechanics, you'd need to manipulate the system clock (not recommended).
+
+### Testing Cosmetics (Trails & Auras)
+
+1. Earn some coins by running the course
+2. Send a `BuyTrail` action from the client (or test via the server console):
+   ```lua
+   -- In Studio command bar (server context):
+   local player = game.Players:GetPlayers()[1]
+   game.ReplicatedStorage.Remotes.PlayerAction:FireServer("BuyTrail", "rainbow")
+   ```
+3. Your coins should decrease by 500 (rainbow trail cost)
+4. Restart playtest — the trail should still be owned and equipped
 
 ---
 
@@ -357,19 +415,22 @@ roblox/                              ← Root folder (this is where you run comm
 ├── test_datamanager.luau            ← 9 automated tests for DataManager
 ├── test_signal.luau                 ← 4 automated tests for Signal utility
 ├── obby.rbxl                        ← Built game file (run rojo build to make this)
+├── promo.html                       ← Immersive promotional landing page
 └── src/                             ← All your code lives here
     ├── ReplicatedStorage/           ← Files shared by server AND client
     │   ├── Config.luau              ← Game balance — prices, speeds, multipliers
-    │   └── Types.luau               ← Type definitions (used by Luau type checker)
+    │   ├── Types.luau               ← Type definitions (used by Luau type checker)
+    │   └── LevelData.luau           ← Fallback positions for imported levels
     ├── ServerScriptService/         ← Server-only code (runs on Roblox's servers)
     │   ├── GameServer.server.luau   ← Main server logic (gameplay, monetization, etc.)
     │   ├── DataManager.luau         ← DataStore wrapper (saves/loads player data)
-    │   └── Signal.luau              ← Utility: custom event system
+    │   ├── Signal.luau              ← Utility: custom event system
+    │   └── GenerateLevelData.luau   ← Studio utility: auto-generate LevelData from tags
     ├── StarterGui/                  ← Client-only code for the HUD
     │   └── ObbyHUD.client.luau      ← Main HUD (timer, combo, daily rewards, shop)
     └── StarterPlayerScripts/        ← Client-only VFX and effects
         ├── ObbyClient.client.luau   ← Sound, particles, camera shake, ring effects
-        └── ObbyEffects.client.luau  ← Bloom, vignette, screen flash, trails
+        └── ObbyEffects.client.luau  ← Bloom, vignette, screen flash, trails, chromatic ab.
 ```
 
 ### How to Edit Config (The Easy Way)
@@ -385,8 +446,8 @@ Open `src/ReplicatedStorage/Config.luau`. This is where all the **tunable number
 | `DAILY_REWARD_STREAK_MULTIPLIER` | `10` | Extra coins per streak day |
 | `DAILY_REWARD_MAX_STREAK` | `7` | Max streak days |
 | `MAX_SPEED_STUDS_PER_SEC` | `150` | Anti-cheat speed limit |
-| `HUD_ANIMATION_SPEED` | `0.3` | How fast HUD animations play |
 | `COSMETICS.TRAILS` | — | Array of purchasable trails (id, name, cost, color) |
+| `COSMETICS.AURAS` | — | Array of purchasable auras (id, name, cost) |
 
 **Example**: Want daily rewards to give double? Change `DAILY_REWARD_BASE = 50` to `DAILY_REWARD_BASE = 100`.
 
@@ -412,12 +473,22 @@ Change any `Color3.fromRGB(R, G, B)` to pick a different color. Use [color picke
 ### How to Add a New Trail
 
 1. Open `src/ReplicatedStorage/Config.luau`
-2. Find the `TRAILS` table (around line 101)
+2. Find the `TRAILS` table
 3. Add a new entry:
 ```lua
 { id = "void", name = "Void", cost = 10000, color = Color3.fromRGB(30, 0, 50) },
 ```
 4. Save the file, rebuild, and the trail will appear in the shop
+
+### How to Add a New Aura
+
+1. Open `src/ReplicatedStorage/Config.luau`
+2. Find the `AURAS` table
+3. Add a new entry:
+```lua
+{ id = "shadow", name = "Shadow", cost = 5000 },
+```
+4. The aura is now purchasable via the `BuyAura` server action
 
 ### How to Add More Checkpoints or Coins in the Game
 
@@ -504,6 +575,7 @@ All DataManager S-tier test suites completed successfully.
 | **Red error: "MarketplaceService is not available"** | Monetization not enabled | Go to Game Settings → Monetization → Enable → ON |
 | **Red error: "Attempt to index nil with 'WaitForChild'"** | A module or RemoteEvent didn't exist when the script tried to load it | This usually happens if you didn't build properly. Run `rojo build -o obby.rbxl` and re-open. |
 | **Checkpoints/coins don't work** | Parts not tagged correctly | Make sure each part has the right tag (`Checkpoint`, `Coin`, or `FinishLine`) in CollectionService. Checkpoints also need an `Order` attribute (number). |
+| **"No tagged parts found — using LevelData fallback"** | Normal when using imported/glTF geometry | Expected behavior. Fill in positions in `LevelData.luau` and rebuild. |
 | **HUD doesn't appear** | Script error in ObbyHUD | Check the Output window for red messages. Ensure all required RemoteEvents exist (they're created automatically, but a script error could prevent it). |
 | **"Not enough coins" when buying a trail** | You need to earn coins first | Run a few laps and collect the floating coins, or simulate a purchase from the Test tab. |
 | **Daily reward popup doesn't appear** | You already claimed today (in Studio, this is based on your PC's date) | The popup still appears but says "Already claimed" and offers a CLOSE button instead. |
@@ -512,6 +584,9 @@ All DataManager S-tier test suites completed successfully.
 | **Rojo sync isn't working** | Plugin not installed or not connected | Install the Rojo Studio plugin from the Roblox Plugin Marketplace. In Studio, go to Plugins → Rojo → Connect. Then run `rojo serve` in PowerShell. |
 | **Camera shake doesn't work** | Script error in ObbyClient | The `restoreShake` function uses `camera.CFrame`, but `camera` was changed to `workspace.CurrentCamera` in the FOV function. Make sure the shake functions also reference a live camera. (They use their own local variable that gets set correctly.) |
 | **Data doesn't save between playtests** | Normal in Studio | Studio's DataStore is ephemeral — data only persists during a single session. DataStore persistence only works in published games. |
+| **"Unknown action from PlayerName: ..."** | A client sent an unrecognized action | If this is from your own code, check for typos in action strings. If from an exploiter, the action is being blocked and logged — this is correct behavior. |
+| **Trail purchase worked but coins came back after restart** | Old bug (fixed) | This was caused by the atomic merge using `max()` which overwrote coin deductions. It is now fixed with `forceOverwrite = true`. Update to the latest commit. |
+| **Daily streak reset at month boundary** | Old bug (fixed) | The old `isYesterday` function used simple date subtraction which broke at month/year boundaries. It now uses Julian day numbers. Update to the latest commit. |
 
 ### If You See This Error in Output:
 
@@ -549,32 +624,32 @@ All DataManager S-tier test suites completed successfully.
                     └──────┬──────┘
                            │
                            ▼
-              ┌──────────────────────┐
-              │   ObbyHUD.client     │  ← Shows timer, combo, badges, daily reward
-              │   (StarterGui)       │     Sends "RequestReset", "ClaimDailyReward",
-              │                      │     "BuyTrail" to server
-              └──────────┬───────────┘
-                         │ FireClient / OnServerEvent
-                         ▼
-              ┌──────────────────────┐
-              │   GameServer.server  │  ← The BRAIN. Validates everything.
-              │   (ServerScriptSvc)  │     Handles checkpoints, coins, finish line.
-              │                      │     Anti-cheat, combo, daily rewards, monetization.
-              └──────────┬───────────┘
-                         │
-                    ┌────┴────┐
-                    │         │
-                    ▼         ▼
-          ┌────────────┐  ┌────────────┐
-          │ DataManager│  │ Config     │  ← Settings database
-          │ (Module)   │  │ (Module)   │     Prices, multipliers, IDs
-          └────────────┘  └────────────┘
-                    │
-                    ▼
-          ┌────────────────────┐
-          │   Roblox DataStore │  ← Cloud save: stats, settings, daily
-          │   (Cloud)          │
-          └────────────────────┘
+               ┌──────────────────────┐
+               │   ObbyHUD.client     │  ← Shows timer, combo, badges, daily reward
+               │   (StarterGui)       │     Sends "RequestReset", "ClaimDailyReward",
+               │                      │     "BuyTrail", "BuyAura" to server
+               └──────────┬───────────┘
+                          │ FireClient / OnServerEvent
+                          ▼
+               ┌──────────────────────┐
+               │   GameServer.server  │  ← The BRAIN. Validates everything.
+               │   (ServerScriptSvc)  │     Handles checkpoints, coins, finish line.
+               │                      │     Anti-cheat, combo, daily rewards, monetization.
+               └──────────┬───────────┘
+                          │
+                     ┌────┴────┐
+                     │         │
+                     ▼         ▼
+           ┌────────────┐  ┌────────────┐
+           │ DataManager│  │ Config     │  ← Settings database
+           │ (Module)   │  │ (Module)   │     Prices, multipliers, IDs
+           └────────────┘  └────────────┘
+                     │
+                     ▼
+           ┌────────────────────┐
+           │   Roblox DataStore   │  ← Cloud save: stats, settings, daily
+           │   (Cloud)            │
+           └────────────────────┘
 
     ┌──────────────────┬──────────────────┐
     │ ObbyClient.client│ ObbyEffects.client│
@@ -596,6 +671,7 @@ All DataManager S-tier test suites completed successfully.
 - The combo counter? The server tells you what it is. Your client just displays it.
 - Coins? The server checks distance, HRP existence, and duplicate collection. Your client can't just say "I got a coin."
 - Purchases? All validated by the server's `ProcessReceipt` handler. Receipts are deduplicated so you can't claim the same purchase twice.
+- Daily rewards? The server tracks the date and streak. The client just shows the popup.
 
 This means even if someone hacks their Roblox client, they can't cheat. The server decides everything.
 
@@ -619,6 +695,8 @@ This means even if someone hacks their Roblox client, they can't cheat. The serv
 | **Add a finish line** | Part → Tag: `FinishLine` |
 | **Change game balance** | Edit `src/ReplicatedStorage/Config.luau` |
 | **Change colors** | Edit `src/StarterGui/ObbyHUD.client.luau` (line 24) |
+| **Add fallback positions** | Edit `src/ReplicatedStorage/LevelData.luau` |
+| **Generate LevelData from Studio** | Run `GenerateLevelData.luau` in Studio, copy output |
 
 ---
 

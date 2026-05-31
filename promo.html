@@ -1,0 +1,1411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brainrot Checkpoint Obby — S-TIER Speedrun</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <style>
+        :root {
+            --neon-cyan: #00f0ff;
+            --neon-magenta: #ff00aa;
+            --neon-gold: #ffd700;
+            --neon-lime: #39ff14;
+            --glass-bg: rgba(10, 12, 30, 0.65);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --deep-space: #050510;
+            --spotlight: rgba(255, 240, 200, 0.15);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html {
+            scroll-behavior: smooth;
+            background: var(--deep-space);
+        }
+
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            color: #fff;
+            overflow-x: hidden;
+            background: var(--deep-space);
+            cursor: none;
+        }
+
+        /* Custom Cursor */
+        .cursor {
+            position: fixed;
+            width: 20px; height: 20px;
+            border: 2px solid var(--neon-cyan);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 9999;
+            transition: transform 0.08s ease-out, width 0.2s, height 0.2s;
+            mix-blend-mode: difference;
+        }
+        .cursor-dot {
+            position: fixed;
+            width: 4px; height: 4px;
+            background: var(--neon-cyan);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 9999;
+        }
+        .cursor.hover { width: 40px; height: 40px; border-color: var(--neon-magenta); }
+
+        /* Three.js Canvas Background */
+        #bg-canvas {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* Particle Overlay Canvas */
+        #particle-canvas {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            z-index: 1;
+            pointer-events: none;
+            mix-blend-mode: screen;
+        }
+
+        /* Chromatic Aberration Overlay */
+        .chromatic-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            z-index: 2;
+            pointer-events: none;
+            background: radial-gradient(circle at 50% 50%, transparent 60%, rgba(255,0,170,0.03) 100%);
+            animation: chromaticPulse 4s ease-in-out infinite;
+        }
+        @keyframes chromaticPulse {
+            0%, 100% { filter: hue-rotate(0deg); }
+            50% { filter: hue-rotate(15deg); }
+        }
+
+        /* Vignette */
+        .vignette {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            z-index: 3;
+            pointer-events: none;
+            background: radial-gradient(circle at 50% 50%, transparent 40%, rgba(0,0,0,0.6) 100%);
+        }
+
+        /* Content Layers */
+        .content { position: relative; z-index: 10; }
+
+        /* Glassmorphism Panel */
+        .glass {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px) saturate(1.4);
+            -webkit-backdrop-filter: blur(20px) saturate(1.4);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05);
+        }
+
+        /* Neon Text Glow */
+        .neon-text {
+            text-shadow: 0 0 10px currentColor, 0 0 40px currentColor, 0 0 80px currentColor;
+        }
+        .neon-cyan { color: var(--neon-cyan); }
+        .neon-magenta { color: var(--neon-magenta); }
+        .neon-gold { color: var(--neon-gold); }
+        .neon-lime { color: var(--neon-lime); }
+
+        /* ==================== HERO ==================== */
+        .hero {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 20px;
+            background: rgba(255, 215, 0, 0.1);
+            border: 1px solid var(--neon-gold);
+            border-radius: 100px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.75rem;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: var(--neon-gold);
+            margin-bottom: 32px;
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        .hero-badge::before {
+            content: '';
+            width: 8px; height: 8px;
+            background: var(--neon-gold);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--neon-gold);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.8); }
+        }
+
+        .hero-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: clamp(3rem, 8vw, 7rem);
+            font-weight: 900;
+            line-height: 1;
+            letter-spacing: -2px;
+            margin-bottom: 16px;
+            position: relative;
+        }
+        .hero-title .main { display: block; }
+        .hero-title .sub {
+            font-size: 0.35em;
+            font-weight: 400;
+            letter-spacing: 12px;
+            color: var(--neon-cyan);
+            display: block;
+            margin-top: 8px;
+        }
+
+        .hero-desc {
+            font-size: clamp(1rem, 2vw, 1.3rem);
+            max-width: 600px;
+            line-height: 1.6;
+            color: rgba(255,255,255,0.7);
+            margin-bottom: 40px;
+            font-weight: 300;
+        }
+
+        .hero-cta {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            padding: 18px 48px;
+            background: linear-gradient(135deg, var(--neon-magenta), #ff4488);
+            border: none;
+            border-radius: 100px;
+            color: #fff;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s, box-shadow 0.3s;
+            box-shadow: 0 0 30px rgba(255, 0, 170, 0.4);
+        }
+        .hero-cta:hover {
+            transform: scale(1.05) translateY(-2px);
+            box-shadow: 0 0 60px rgba(255, 0, 170, 0.6);
+        }
+        .hero-cta::before {
+            content: '';
+            position: absolute;
+            top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.2), transparent);
+            transform: rotate(45deg);
+            transition: left 0.5s;
+        }
+        .hero-cta:hover::before { left: 100%; }
+        .hero-cta .arrow { transition: transform 0.3s; }
+        .hero-cta:hover .arrow { transform: translateX(6px); }
+
+        .hero-stats {
+            display: flex;
+            gap: 48px;
+            margin-top: 60px;
+            opacity: 0;
+        }
+        .hero-stat {
+            text-align: center;
+        }
+        .hero-stat-value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--neon-cyan);
+        }
+        .hero-stat-label {
+            font-size: 0.8rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.5);
+            margin-top: 4px;
+        }
+
+        /* Speed Lines */
+        .speed-lines {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 5;
+            opacity: 0.3;
+        }
+        .speed-line {
+            position: absolute;
+            width: 2px;
+            height: 100px;
+            background: linear-gradient(to bottom, transparent, var(--neon-cyan), transparent);
+            animation: speedLineFall linear infinite;
+        }
+        @keyframes speedLineFall {
+            0% { transform: translateY(-100vh) scaleY(0.5); opacity: 0; }
+            50% { opacity: 1; }
+            100% { transform: translateY(100vh) scaleY(2); opacity: 0; }
+        }
+
+        /* ==================== SECTIONS ==================== */
+        .section {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 80px 5vw;
+            position: relative;
+        }
+
+        .section-inner {
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        .section-label {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.75rem;
+            letter-spacing: 6px;
+            text-transform: uppercase;
+            color: var(--neon-gold);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .section-label::before {
+            content: '';
+            width: 32px; height: 2px;
+            background: var(--neon-gold);
+        }
+
+        .section-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            font-weight: 700;
+            margin-bottom: 24px;
+            line-height: 1.1;
+        }
+
+        .section-text {
+            font-size: 1.1rem;
+            line-height: 1.7;
+            color: rgba(255,255,255,0.7);
+            max-width: 600px;
+        }
+
+        /* ==================== WORLD CARDS ==================== */
+        .world-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            margin-top: 48px;
+        }
+        .world-card {
+            padding: 32px;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.4s, box-shadow 0.4s;
+        }
+        .world-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 4px;
+            background: linear-gradient(90deg, var(--neon-cyan), var(--neon-magenta));
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.4s;
+        }
+        .world-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+        .world-card:hover::before { transform: scaleX(1); }
+        .world-card-icon {
+            font-size: 2.5rem;
+            margin-bottom: 16px;
+            filter: drop-shadow(0 0 10px currentColor);
+        }
+        .world-card-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2rem;
+            margin-bottom: 8px;
+        }
+        .world-card-desc {
+            font-size: 0.9rem;
+            color: rgba(255,255,255,0.6);
+            line-height: 1.5;
+        }
+
+        /* ==================== COMBO VISUALIZER ==================== */
+        .combo-section {
+            text-align: center;
+        }
+        .combo-display {
+            font-family: 'Orbitron', sans-serif;
+            font-size: clamp(4rem, 12vw, 8rem);
+            font-weight: 900;
+            position: relative;
+            display: inline-block;
+            margin: 40px 0;
+        }
+        .combo-display .multiplier {
+            background: linear-gradient(135deg, var(--neon-cyan), var(--neon-magenta));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            filter: drop-shadow(0 0 30px rgba(0, 240, 255, 0.5));
+        }
+        .combo-display .label {
+            font-size: 0.25em;
+            display: block;
+            letter-spacing: 8px;
+            color: var(--neon-gold);
+            margin-top: -10px;
+            animation: comboLabelPulse 1s ease-in-out infinite;
+        }
+        @keyframes comboLabelPulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.1); }
+        }
+
+        .combo-tiers {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            flex-wrap: wrap;
+            margin-top: 32px;
+        }
+        .combo-tier {
+            padding: 16px 32px;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            text-align: center;
+            transition: all 0.3s;
+            position: relative;
+        }
+        .combo-tier.active {
+            border-color: var(--neon-cyan);
+            box-shadow: 0 0 30px rgba(0, 240, 255, 0.2);
+            background: rgba(0, 240, 255, 0.05);
+        }
+        .combo-tier-value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        .combo-tier-name {
+            font-size: 0.8rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.5);
+            margin-top: 4px;
+        }
+
+        /* ==================== CHECKPOINT PROGRESS ==================== */
+        .checkpoint-track {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin: 48px 0;
+            flex-wrap: wrap;
+        }
+        .checkpoint-node {
+            width: 48px; height: 48px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 700;
+            position: relative;
+            transition: all 0.5s;
+        }
+        .checkpoint-node.reached {
+            border-color: var(--neon-cyan);
+            background: rgba(0, 240, 255, 0.1);
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
+            color: var(--neon-cyan);
+        }
+        .checkpoint-node.current {
+            border-color: var(--neon-gold);
+            background: rgba(255, 215, 0, 0.15);
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.4);
+            color: var(--neon-gold);
+            animation: currentPulse 1.5s infinite;
+        }
+        @keyframes currentPulse {
+            0%, 100% { box-shadow: 0 0 20px rgba(255, 215, 0, 0.3); }
+            50% { box-shadow: 0 0 40px rgba(255, 215, 0, 0.6); }
+        }
+        .checkpoint-connector {
+            width: 40px; height: 2px;
+            background: rgba(255,255,255,0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        .checkpoint-connector::after {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, var(--neon-cyan), var(--neon-magenta));
+            transition: left 0.5s;
+        }
+        .checkpoint-connector.active::after { left: 0; }
+
+        /* ==================== MONETIZATION ==================== */
+        .monetization-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+            margin-top: 48px;
+        }
+        .monet-card {
+            padding: 40px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .monet-card.vip {
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            background: linear-gradient(135deg, rgba(255,215,0,0.05), var(--glass-bg));
+        }
+        .monet-card.vip::after {
+            content: 'VIP';
+            position: absolute;
+            top: 12px; right: -30px;
+            background: var(--neon-gold);
+            color: #000;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 4px 40px;
+            transform: rotate(45deg);
+        }
+        .monet-icon {
+            font-size: 3rem;
+            margin-bottom: 16px;
+            filter: drop-shadow(0 0 15px currentColor);
+        }
+        .monet-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.3rem;
+            margin-bottom: 8px;
+        }
+        .monet-price {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--neon-cyan);
+            margin-bottom: 16px;
+        }
+        .monet-desc {
+            font-size: 0.95rem;
+            color: rgba(255,255,255,0.6);
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+        .monet-benefits {
+            list-style: none;
+            text-align: left;
+        }
+        .monet-benefits li {
+            padding: 6px 0;
+            font-size: 0.9rem;
+            color: rgba(255,255,255,0.7);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .monet-benefits li::before {
+            content: '✦';
+            color: var(--neon-lime);
+        }
+
+        /* ==================== LEADERBOARD ==================== */
+        .leaderboard {
+            margin-top: 48px;
+        }
+        .lb-row {
+            display: grid;
+            grid-template-columns: 60px 1fr 120px;
+            align-items: center;
+            padding: 16px 24px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            transition: background 0.3s;
+        }
+        .lb-row:hover { background: rgba(255,255,255,0.03); }
+        .lb-rank {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+        .lb-rank.gold { color: var(--neon-gold); text-shadow: 0 0 10px var(--neon-gold); }
+        .lb-rank.silver { color: #c0c0c0; }
+        .lb-rank.bronze { color: #cd7f32; }
+        .lb-name {
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .lb-badge {
+            font-size: 0.65rem;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: 'Orbitron', sans-serif;
+            text-transform: uppercase;
+        }
+        .lb-badge.vip { background: rgba(255,215,0,0.2); color: var(--neon-gold); border: 1px solid var(--neon-gold); }
+        .lb-badge.premium { background: rgba(0,240,255,0.2); color: var(--neon-cyan); border: 1px solid var(--neon-cyan); }
+        .lb-time {
+            font-family: 'Orbitron', sans-serif;
+            text-align: right;
+            color: var(--neon-cyan);
+        }
+
+        /* ==================== DAILY REWARD ==================== */
+        .daily-reward {
+            text-align: center;
+            padding: 60px 40px;
+            position: relative;
+        }
+        .daily-streak {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin: 32px 0;
+        }
+        .streak-day {
+            width: 64px;
+            text-align: center;
+        }
+        .streak-dot {
+            width: 48px; height: 48px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.1);
+            margin: 0 auto 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            transition: all 0.4s;
+        }
+        .streak-dot.claimed {
+            border-color: var(--neon-cyan);
+            background: rgba(0, 240, 255, 0.1);
+            color: var(--neon-cyan);
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.2);
+        }
+        .streak-dot.current {
+            border-color: var(--neon-gold);
+            background: rgba(255, 215, 0, 0.15);
+            color: var(--neon-gold);
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
+            animation: streakPulse 2s infinite;
+        }
+        @keyframes streakPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        .streak-label {
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.5);
+        }
+
+        /* ==================== FOOTER CTA ==================== */
+        .footer-cta {
+            min-height: 60vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            position: relative;
+        }
+        .footer-cta-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: clamp(2rem, 6vw, 4rem);
+            font-weight: 900;
+            margin-bottom: 16px;
+        }
+        .footer-cta-desc {
+            font-size: 1.1rem;
+            color: rgba(255,255,255,0.6);
+            max-width: 500px;
+            margin-bottom: 40px;
+        }
+        .play-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 16px;
+            padding: 24px 64px;
+            background: linear-gradient(135deg, var(--neon-lime), #00cc44);
+            border: none;
+            border-radius: 100px;
+            color: #000;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.3rem;
+            font-weight: 900;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s, box-shadow 0.3s;
+            box-shadow: 0 0 40px rgba(57, 255, 20, 0.4);
+        }
+        .play-button:hover {
+            transform: scale(1.08);
+            box-shadow: 0 0 80px rgba(57, 255, 20, 0.6);
+        }
+        .play-button .icon { font-size: 1.5rem; }
+
+        /* ==================== RESPONSIVE ==================== */
+        @media (max-width: 768px) {
+            .hero-stats { gap: 24px; }
+            .world-grid { grid-template-columns: 1fr; }
+            .monetization-grid { grid-template-columns: 1fr; }
+            .checkpoint-track { gap: 4px; }
+            .checkpoint-node { width: 36px; height: 36px; font-size: 0.7rem; }
+            .checkpoint-connector { width: 20px; }
+            .daily-streak { gap: 8px; }
+            .streak-day { width: 48px; }
+            .streak-dot { width: 36px; height: 36px; }
+        }
+
+        /* ==================== SCROLL REVEAL ==================== */
+        .reveal {
+            opacity: 0;
+            transform: translateY(60px);
+        }
+    </style>
+</head>
+<body>
+
+<!-- Custom Cursor -->
+<div class="cursor" id="cursor"></div>
+<div class="cursor-dot" id="cursorDot"></div>
+
+<!-- Background Layers -->
+<canvas id="bg-canvas"></canvas>
+<canvas id="particle-canvas"></canvas>
+<div class="chromatic-overlay"></div>
+<div class="vignette"></div>
+
+<!-- Speed Lines -->
+<div class="speed-lines" id="speedLines"></div>
+
+<!-- ==================== CONTENT ==================== -->
+<div class="content">
+
+    <!-- HERO -->
+    <section class="hero" id="hero">
+        <div class="hero-badge" id="heroBadge">S-TIER Edition</div>
+        <h1 class="hero-title" id="heroTitle">
+            <span class="main">BRAINROT</span>
+            <span class="sub neon-cyan neon-text">CHECKPOINT OBBY</span>
+        </h1>
+        <p class="hero-desc" id="heroDesc">
+            A relentless, dopamine-drenched speedrun gauntlet through carnival chaos and architectural madness. 
+            Chain checkpoints. Stack combos. Claim your crown.
+        </p>
+        <button class="hero-cta" id="heroCta" onclick="playSFX('hover'); window.open('https://www.roblox.com/games/','_blank')">
+            <span>Enter The Gauntlet</span>
+            <span class="arrow">→</span>
+        </button>
+
+        <div class="hero-stats" id="heroStats">
+            <div class="hero-stat">
+                <div class="hero-stat-value" id="statCheckpoints">0</div>
+                <div class="hero-stat-label">Checkpoints</div>
+            </div>
+            <div class="hero-stat">
+                <div class="hero-stat-value" id="statCombo">0x</div>
+                <div class="hero-stat-label">Max Combo</div>
+            </div>
+            <div class="hero-stat">
+                <div class="hero-stat-value" id="statPlayers">0</div>
+                <div class="hero-stat-label">Speedrunners</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- WORLD -->
+    <section class="section" id="world">
+        <div class="section-inner">
+            <div class="section-label reveal">The Arena</div>
+            <h2 class="section-title reveal">
+                Where <span class="neon-magenta neon-text">Carnival</span> Meets <span class="neon-cyan neon-text">Chaos</span>
+            </h2>
+            <p class="section-text reveal">
+                Race through a meticulously crafted world of rotating carousels, death-defying ramps, 
+                ivy-draped architecture, and confetti-strewn platforms. Every corner is a visual flex. 
+                Every jump is a gamble.
+            </p>
+
+            <div class="world-grid">
+                <div class="world-card glass reveal">
+                    <div class="world-card-icon">🎠</div>
+                    <div class="world-card-title neon-cyan">Carnival District</div>
+                    <div class="world-card-desc">
+                        Spinning carousels that launch you into the void. Time your jumps or get thrown into the abyss. 
+                        The Ramp of Doom waits for no one.
+                    </div>
+                </div>
+                <div class="world-card glass reveal">
+                    <div class="world-card-icon">🏛️</div>
+                    <div class="world-card-title neon-gold">Architectural Ruins</div>
+                    <div class="world-card-desc">
+                        Crumbling columns and moss-covered arches form a parkour playground. 
+                        Hanging ivy sways as you vault through ancient stonework.
+                    </div>
+                </div>
+                <div class="world-card glass reveal">
+                    <div class="world-card-icon">🌿</div>
+                    <div class="world-card-title neon-lime">Overgrown Sector</div>
+                    <div class="world-card-desc">
+                        Nature reclaims the course. Vines wrap around floating platforms. 
+                        Spotlight beams cut through the canopy, guiding your path.
+                    </div>
+                </div>
+                <div class="world-card glass reveal">
+                    <div class="world-card-icon">🎪</div>
+                    <div class="world-card-title neon-magenta">VFX Zone</div>
+                    <div class="world-card-desc">
+                        Confetti explosions, chromatic aberration at high speeds, bloom that blinds, 
+                        and trails that paint rainbows across the sky.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- GAMEPLAY -->
+    <section class="section" id="gameplay">
+        <div class="section-inner" style="text-align: center;">
+            <div class="section-label reveal" style="justify-content: center;">The Loop</div>
+            <h2 class="section-title reveal">Speedrun. Stack. Dominate.</h2>
+            <p class="section-text reveal" style="margin: 0 auto;">
+                Touch a checkpoint. Feel the combo ignite. Chain consecutive checkpoints within the 8-second window 
+                to multiply your coin haul up to <strong class="neon-gold neon-text">3.0x</strong>. 
+                Miss the window? The flame dies. Start again.
+            </p>
+
+            <!-- Checkpoint Progress -->
+            <div class="checkpoint-track reveal" id="checkpointTrack">
+                <!-- Generated by JS -->
+            </div>
+
+            <!-- Combo Visualizer -->
+            <div class="combo-section reveal">
+                <div class="combo-display" id="comboDisplay">
+                    <span class="multiplier" id="comboMultiplier">1.0x</span>
+                    <span class="label" id="comboLabel">BASE</span>
+                </div>
+            </div>
+
+            <div class="combo-tiers reveal" id="comboTiers">
+                <div class="combo-tier" data-tier="1">
+                    <div class="combo-tier-value">1.5x</div>
+                    <div class="combo-tier-name">On Fire!</div>
+                </div>
+                <div class="combo-tier" data-tier="2">
+                    <div class="combo-tier-value">2.0x</div>
+                    <div class="combo-tier-name">Unstoppable!</div>
+                </div>
+                <div class="combo-tier" data-tier="3">
+                    <div class="combo-tier-value">3.0x</div>
+                    <div class="combo-tier-name">GODLIKE!</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- MONETIZATION -->
+    <section class="section" id="monetization">
+        <div class="section-inner">
+            <div class="section-label reveal">Power Up</div>
+            <h2 class="section-title reveal">Upgrade Your <span class="neon-gold neon-text">Run</span></h2>
+            <p class="section-text reveal">
+                Permanent upgrades that multiply every coin you touch. 
+                Developer products for instant gratification. Premium perks for the elite.
+            </p>
+
+            <div class="monetization-grid">
+                <div class="monet-card glass reveal">
+                    <div class="monet-icon" style="color: var(--neon-cyan);">💎</div>
+                    <div class="monet-title">2x Coins</div>
+                    <div class="monet-price">R$ 299</div>
+                    <div class="monet-desc">Permanently double every coin you collect. Forever. Stackable with all other multipliers.</div>
+                    <ul class="monet-benefits">
+                        <li>2x base coin earnings</li>
+                        <li>Works with combo multipliers</li>
+                        <li>Works with Premium bonus</li>
+                    </ul>
+                </div>
+                <div class="monet-card glass vip reveal">
+                    <div class="monet-icon" style="color: var(--neon-gold);">👑</div>
+                    <div class="monet-title">VIP Pass</div>
+                    <div class="monet-price">R$ 599</div>
+                    <div class="monet-desc">The ultimate status symbol. Golden name tag, rainbow trail, and a permanent +50% coin bonus on every run.</div>
+                    <ul class="monet-benefits">
+                        <li>+50% coin multiplier</li>
+                        <li>Golden chat tag [VIP]</li>
+                        <li>Rainbow character trail</li>
+                        <li>Exclusive VIP badge on HUD</li>
+                    </ul>
+                </div>
+                <div class="monet-card glass reveal">
+                    <div class="monet-icon" style="color: var(--neon-magenta);">🪙</div>
+                    <div class="monet-title">Coin Pack</div>
+                    <div class="monet-price">R$ 49–299</div>
+                    <div class="monet-desc">Instant coin injections. Small, medium, or massive. Buy your way to the cosmetic shop's finest trails and auras.</div>
+                    <ul class="monet-benefits">
+                        <li>100 / 500 / 2,000 coins</li>
+                        <li>Instant delivery</li>
+                        <li>Safe server-side validation</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- LEADERBOARD -->
+    <section class="section" id="leaderboard">
+        <div class="section-inner">
+            <div class="section-label reveal">Global Rankings</div>
+            <h2 class="section-title reveal">The <span class="neon-cyan neon-text">Wall</span> of Legends</h2>
+            <p class="section-text reveal">
+                Your best time is etched into the global OrderedDataStore. 
+                Only the fastest survive the leaderboard. Anti-cheat speed validation keeps the competition pure.
+            </p>
+
+            <div class="leaderboard glass reveal">
+                <div class="lb-row">
+                    <div class="lb-rank gold">1</div>
+                    <div class="lb-name">
+                        SpeedDemon_X
+                        <span class="lb-badge vip">VIP</span>
+                        <span class="lb-badge premium">Premium</span>
+                    </div>
+                    <div class="lb-time">0:42.18</div>
+                </div>
+                <div class="lb-row">
+                    <div class="lb-rank silver">2</div>
+                    <div class="lb-name">
+                        ObbyKing_99
+                        <span class="lb-badge premium">Premium</span>
+                    </div>
+                    <div class="lb-time">0:45.63</div>
+                </div>
+                <div class="lb-row">
+                    <div class="lb-rank bronze">3</div>
+                    <div class="lb-name">
+                        CheckpointChaser
+                    </div>
+                    <div class="lb-time">0:48.91</div>
+                </div>
+                <div class="lb-row">
+                    <div class="lb-rank">4</div>
+                    <div class="lb-name">JumpMaster_42</div>
+                    <div class="lb-time">0:52.34</div>
+                </div>
+                <div class="lb-row">
+                    <div class="lb-rank">5</div>
+                    <div class="lb-name">
+                        NeonRunner
+                        <span class="lb-badge vip">VIP</span>
+                    </div>
+                    <div class="lb-time">0:55.77</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- DAILY REWARDS -->
+    <section class="section" id="daily">
+        <div class="section-inner" style="text-align: center;">
+            <div class="section-label reveal" style="justify-content: center;">Retention</div>
+            <h2 class="section-title reveal">Daily <span class="neon-gold neon-text">Streaks</span></h2>
+            <p class="section-text reveal" style="margin: 0 auto;">
+                Come back every day to build your streak. Max out at 7 days for a massive coin payout. 
+                Premium members get an extra +50 coins on top. Don't break the chain.
+            </p>
+
+            <div class="daily-reward glass reveal">
+                <div class="daily-streak">
+                    <div class="streak-day">
+                        <div class="streak-dot claimed">✓</div>
+                        <div class="streak-label">Day 1<br>50¢</div>
+                    </div>
+                    <div class="streak-day">
+                        <div class="streak-dot claimed">✓</div>
+                        <div class="streak-label">Day 2<br>60¢</div>
+                    </div>
+                    <div class="streak-day">
+                        <div class="streak-dot claimed">✓</div>
+                        <div class="streak-label">Day 3<br>70¢</div>
+                    </div>
+                    <div class="streak-day">
+                        <div class="streak-dot current">4</div>
+                        <div class="streak-label">Day 4<br>80¢</div>
+                    </div>
+                    <div class="streak-day">
+                        <div class="streak-dot">5</div>
+                        <div class="streak-label">Day 5<br>90¢</div>
+                    </div>
+                    <div class="streak-day">
+                        <div class="streak-dot">6</div>
+                        <div class="streak-label">Day 6<br>100¢</div>
+                    </div>
+                    <div class="streak-day">
+                        <div class="streak-dot">7</div>
+                        <div class="streak-label">Day 7<br>120¢</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER CTA -->
+    <section class="footer-cta" id="footer">
+        <h2 class="footer-cta-title reveal">
+            Your <span class="neon-lime neon-text">Run</span> Starts Now
+        </h2>
+        <p class="footer-cta-desc reveal">
+            Join thousands of speedrunners. Chain the combo. Claim the crown. 
+            The leaderboard has your name on it — if you're fast enough.
+        </p>
+        <button class="play-button reveal" onclick="playSFX('play'); window.open('https://www.roblox.com/games/','_blank')">
+            <span class="icon">▶</span>
+            <span>Play on Roblox</span>
+        </button>
+    </section>
+
+</div>
+
+<script>
+// ==================== AUDIO ENGINE ====================
+let audioCtx = null;
+function getAudioCtx() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return audioCtx;
+}
+
+function playTone(freq, type, duration, vol = 0.1) {
+    const ctx = getAudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+    gain.gain.setValueAtTime(vol, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + duration);
+}
+
+function playSFX(name) {
+    try {
+        switch(name) {
+            case 'hover':
+                playTone(800, 'sine', 0.08, 0.05);
+                break;
+            case 'checkpoint':
+                playTone(1200, 'square', 0.15, 0.08);
+                setTimeout(() => playTone(1600, 'square', 0.2, 0.08), 80);
+                break;
+            case 'combo':
+                playTone(600, 'sawtooth', 0.3, 0.06);
+                setTimeout(() => playTone(900, 'sawtooth', 0.3, 0.06), 100);
+                setTimeout(() => playTone(1200, 'sawtooth', 0.4, 0.08), 200);
+                break;
+            case 'play':
+                playTone(440, 'sine', 0.2, 0.1);
+                setTimeout(() => playTone(554, 'sine', 0.2, 0.1), 150);
+                setTimeout(() => playTone(659, 'sine', 0.4, 0.12), 300);
+                break;
+        }
+    } catch(e) {}
+}
+
+// ==================== CUSTOM CURSOR ====================
+const cursor = document.getElementById('cursor');
+const cursorDot = document.getElementById('cursorDot');
+let mouseX = 0, mouseY = 0;
+let cursorX = 0, cursorY = 0;
+
+document.addEventListener('mousemove', (e) => {
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+    cursorDot.style.left = mouseX - 2 + 'px';
+    cursorDot.style.top = mouseY - 2 + 'px';
+});
+
+function animateCursor() {
+    cursorX += (mouseX - cursorX) * 0.15;
+    cursorY += (mouseY - cursorY) * 0.15;
+    cursor.style.left = cursorX - 10 + 'px';
+    cursor.style.top = cursorY - 10 + 'px';
+    requestAnimationFrame(animateCursor);
+}
+animateCursor();
+
+document.querySelectorAll('button, .world-card, .combo-tier').forEach(el => {
+    el.addEventListener('mouseenter', () => {
+        cursor.classList.add('hover');
+        playSFX('hover');
+    });
+    el.addEventListener('mouseleave', () => cursor.classList.remove('hover'));
+});
+
+// ==================== THREE.JS BACKGROUND ====================
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('bg-canvas'), alpha: true, antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+// Floating geometric shapes (representing carnival/architectural elements)
+const shapes = [];
+const geometries = [
+    new THREE.IcosahedronGeometry(1, 0),
+    new THREE.OctahedronGeometry(1, 0),
+    new THREE.TorusGeometry(1, 0.3, 8, 20),
+    new THREE.ConeGeometry(0.8, 1.5, 6),
+];
+
+const colors = [0x00f0ff, 0xff00aa, 0xffd700, 0x39ff14];
+
+for (let i = 0; i < 40; i++) {
+    const geom = geometries[i % geometries.length];
+    const mat = new THREE.MeshBasicMaterial({
+        color: colors[i % colors.length],
+        wireframe: true,
+        transparent: true,
+        opacity: 0.15
+    });
+    const mesh = new THREE.Mesh(geom, mat);
+    mesh.position.set(
+        (Math.random() - 0.5) * 30,
+        (Math.random() - 0.5) * 20,
+        (Math.random() - 0.5) * 20 - 10
+    );
+    mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
+    mesh.userData = {
+        rotSpeed: { x: (Math.random() - 0.5) * 0.01, y: (Math.random() - 0.5) * 0.01 },
+        floatSpeed: Math.random() * 0.005 + 0.002,
+        floatOffset: Math.random() * Math.PI * 2
+    };
+    scene.add(mesh);
+    shapes.push(mesh);
+}
+
+// Particle field
+const particlesGeom = new THREE.BufferGeometry();
+const particleCount = 800;
+const posArray = new Float32Array(particleCount * 3);
+for (let i = 0; i < particleCount * 3; i++) {
+    posArray[i] = (Math.random() - 0.5) * 50;
+}
+particlesGeom.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+const particlesMat = new THREE.PointsMaterial({
+    size: 0.05,
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0.4
+});
+const particleSystem = new THREE.Points(particlesGeom, particlesMat);
+scene.add(particleSystem);
+
+camera.position.z = 15;
+
+function animateThree() {
+    requestAnimationFrame(animateThree);
+    const time = Date.now() * 0.001;
+
+    shapes.forEach(mesh => {
+        mesh.rotation.x += mesh.userData.rotSpeed.x;
+        mesh.rotation.y += mesh.userData.rotSpeed.y;
+        mesh.position.y += Math.sin(time * mesh.userData.floatSpeed + mesh.userData.floatOffset) * 0.01;
+    });
+
+    particleSystem.rotation.y = time * 0.02;
+    particleSystem.rotation.x = time * 0.01;
+
+    renderer.render(scene, camera);
+}
+animateThree();
+
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ==================== 2D PARTICLE OVERLAY ====================
+const pCanvas = document.getElementById('particle-canvas');
+const pCtx = pCanvas.getContext('2d');
+pCanvas.width = window.innerWidth;
+pCanvas.height = window.innerHeight;
+
+const pParticles = [];
+for (let i = 0; i < 60; i++) {
+    pParticles.push({
+        x: Math.random() * pCanvas.width,
+        y: Math.random() * pCanvas.height,
+        size: Math.random() * 3 + 1,
+        speedY: Math.random() * -1.5 - 0.5,
+        speedX: (Math.random() - 0.5) * 0.5,
+        color: ['#00f0ff', '#ff00aa', '#ffd700', '#39ff14'][Math.floor(Math.random() * 4)],
+        life: Math.random() * 100
+    });
+}
+
+function animateParticles() {
+    pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
+    pParticles.forEach(p => {
+        p.y += p.speedY;
+        p.x += p.speedX;
+        p.life--;
+        if (p.y < -10 || p.life <= 0) {
+            p.y = pCanvas.height + 10;
+            p.x = Math.random() * pCanvas.width;
+            p.life = 100 + Math.random() * 100;
+        }
+        pCtx.beginPath();
+        pCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        pCtx.fillStyle = p.color;
+        pCtx.globalAlpha = 0.3 + (p.life / 200) * 0.5;
+        pCtx.fill();
+    });
+    pCtx.globalAlpha = 1;
+    requestAnimationFrame(animateParticles);
+}
+animateParticles();
+
+// ==================== SPEED LINES ====================
+const speedLinesContainer = document.getElementById('speedLines');
+for (let i = 0; i < 20; i++) {
+    const line = document.createElement('div');
+    line.className = 'speed-line';
+    line.style.left = Math.random() * 100 + '%';
+    line.style.animationDelay = Math.random() * 3 + 's';
+    line.style.animationDuration = (Math.random() * 2 + 1.5) + 's';
+    speedLinesContainer.appendChild(line);
+}
+
+// ==================== CHECKPOINT TRACK ====================
+const checkpointTrack = document.getElementById('checkpointTrack');
+const totalCP = 8;
+for (let i = 1; i <= totalCP; i++) {
+    const node = document.createElement('div');
+    node.className = 'checkpoint-node' + (i <= 3 ? ' reached' : '') + (i === 4 ? ' current' : '');
+    node.textContent = i;
+    checkpointTrack.appendChild(node);
+    if (i < totalCP) {
+        const connector = document.createElement('div');
+        connector.className = 'checkpoint-connector' + (i < 3 ? ' active' : '');
+        checkpointTrack.appendChild(connector);
+    }
+}
+
+// ==================== COMBO ANIMATION ====================
+const comboMult = document.getElementById('comboMultiplier');
+const comboLabel = document.getElementById('comboLabel');
+const comboTiers = document.querySelectorAll('.combo-tier');
+let currentComboTier = 0;
+const tierData = [
+    { mult: '1.0x', label: 'BASE' },
+    { mult: '1.5x', label: 'ON FIRE!' },
+    { mult: '2.0x', label: 'UNSTOPPABLE!' },
+    { mult: '3.0x', label: 'GODLIKE!' }
+];
+
+function cycleCombo() {
+    currentComboTier = (currentComboTier + 1) % tierData.length;
+    const tier = tierData[currentComboTier];
+    comboMult.textContent = tier.mult;
+    comboLabel.textContent = tier.label;
+
+    comboTiers.forEach((t, i) => {
+        t.classList.toggle('active', i === currentComboTier - 1);
+    });
+
+    if (currentComboTier > 0) playSFX('combo');
+
+    // Particle burst at combo display position
+    createBurst(window.innerWidth / 2, window.innerHeight * 0.55, tier.color || '#00f0ff');
+}
+setInterval(cycleCombo, 3000);
+
+function createBurst(x, y, color) {
+    for (let i = 0; i < 20; i++) {
+        const burst = document.createElement('div');
+        burst.style.position = 'fixed';
+        burst.style.left = x + 'px';
+        burst.style.top = y + 'px';
+        burst.style.width = '6px';
+        burst.style.height = '6px';
+        burst.style.background = color;
+        burst.style.borderRadius = '50%';
+        burst.style.pointerEvents = 'none';
+        burst.style.zIndex = '100';
+        burst.style.boxShadow = `0 0 10px ${color}`;
+        document.body.appendChild(burst);
+
+        const angle = (Math.PI * 2 * i) / 20;
+        const dist = 100 + Math.random() * 100;
+        const tx = Math.cos(angle) * dist;
+        const ty = Math.sin(angle) * dist;
+
+        gsap.to(burst, {
+            x: tx,
+            y: ty,
+            opacity: 0,
+            scale: 0,
+            duration: 0.8 + Math.random() * 0.4,
+            ease: 'power2.out',
+            onComplete: () => burst.remove()
+        });
+    }
+}
+
+// ==================== COUNTER ANIMATION ====================
+function animateValue(id, start, end, duration, suffix = '') {
+    const el = document.getElementById(id);
+    const range = end - start;
+    const startTime = performance.now();
+    function update(now) {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        el.textContent = Math.floor(start + range * eased) + suffix;
+        if (progress < 1) requestAnimationFrame(update);
+    }
+    requestAnimationFrame(update);
+}
+
+// Trigger counter animations when hero is visible
+ScrollTrigger.create({
+    trigger: '#hero',
+    start: 'top 80%',
+    onEnter: () => {
+        animateValue('statCheckpoints', 0, 12, 2000);
+        animateValue('statCombo', 0, 3, 2000, 'x');
+        animateValue('statPlayers', 0, 2847, 2500);
+    },
+    once: true
+});
+
+// ==================== GSAP SCROLL ANIMATIONS ====================
+gsap.registerPlugin(ScrollTrigger);
+
+// Hero entrance
+const heroTl = gsap.timeline();
+heroTl.to('#heroBadge', { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out', delay: 0.3 })
+    .to('#heroTitle', { opacity: 1, y: 0, duration: 1, ease: 'power3.out' }, '-=0.4')
+    .to('#heroDesc', { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out' }, '-=0.6')
+    .to('#heroCta', { opacity: 1, y: 0, duration: 0.6, ease: 'back.out(1.7)' }, '-=0.4')
+    .to('#heroStats', { opacity: 1, duration: 0.8, ease: 'power2.out' }, '-=0.2');
+
+gsap.set('#heroTitle', { opacity: 0, y: 40 });
+gsap.set('#heroDesc', { opacity: 0, y: 30 });
+gsap.set('#heroCta', { opacity: 0, y: 20 });
+
+// Section reveals
+gsap.utils.toArray('.reveal').forEach(el => {
+    gsap.to(el, {
+        scrollTrigger: {
+            trigger: el,
+            start: 'top 85%',
+            toggleActions: 'play none none none'
+        },
+        opacity: 1,
+        y: 0,
+        duration: 0.8,
+        ease: 'power3.out'
+    });
+});
+
+// Parallax on hero title
+window.addEventListener('scroll', () => {
+    const scrollY = window.scrollY;
+    document.getElementById('heroTitle').style.transform = `translateY(${scrollY * 0.3}px)`;
+    document.getElementById('bg-canvas').style.transform = `translateY(${scrollY * 0.1}px)`;
+});
+
+// ==================== INTERACTIVE CHECKPOINTS ====================
+document.querySelectorAll('.checkpoint-node').forEach((node, i) => {
+    node.addEventListener('mouseenter', () => {
+        if (!node.classList.contains('reached') && !node.classList.contains('current')) {
+            gsap.to(node, { scale: 1.2, duration: 0.3, ease: 'back.out(2)' });
+        }
+    });
+    node.addEventListener('mouseleave', () => {
+        gsap.to(node, { scale: 1, duration: 0.3 });
+    });
+    node.addEventListener('click', () => {
+        playSFX('checkpoint');
+        if (!node.classList.contains('reached')) {
+            node.classList.add('reached');
+            const connector = checkpointTrack.children[i * 2];
+            if (connector && connector.classList.contains('checkpoint-connector')) {
+                connector.classList.add('active');
+            }
+        }
+    });
+});
+
+// ==================== WORLD CARD INTERACTIONS ====================
+document.querySelectorAll('.world-card').forEach(card => {
+    card.addEventListener('mousemove', (e) => {
+        const rect = card.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        card.style.setProperty('--mouse-x', x + 'px');
+        card.style.setProperty('--mouse-y', y + 'px');
+    });
+});
+
+console.log('🎮 Brainrot Checkpoint Obby — S-TIER Promo Loaded');
+console.log('🔊 Click anywhere to initialize audio context');
+</script>
+</body>
+</html>
