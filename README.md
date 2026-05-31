@@ -193,34 +193,35 @@ The scripts bind to physical assets in the workspace using `CollectionService` t
 
 #### Option B: LevelData Fallback (For glTF/Imported Levels)
 
-If your level geometry comes from a glTF export (which strips all Roblox-specific tags and attributes), you can define fallback positions in `src/ReplicatedStorage/LevelData.luau`:
+If your level geometry comes from a glTF export (which strips all Roblox-specific tags and attributes), the game uses fallback positions from `src/ReplicatedStorage/LevelData.luau`. This file is **pre-filled** with 9 checkpoints and 12 coins derived from actual Export.gltf node coordinates (SpawnLocation, OB_BallPlatform_a, Carousel, Ivy_Hanging_a clusters, plus logical interpolated midpoints).
 
 ```luau
 LevelData.USE_FALLBACK = true
 LevelData.CHECKPOINTS = {
-    { position = Vector3.new(-304.979, 9.192, 57.847), order = 1 },
-    { position = Vector3.new(-363.451, 10.968, 73.157), order = 2 },
-    -- ... etc
+    { position = Vector3.new(-304.979, 9.192, 57.847), order = 1 },  -- SpawnLocation
+    { position = Vector3.new(-343.286, 9.108, 34.672), order = 2 },  -- OB_Spotlight_a
+    { position = Vector3.new(-363.451, 10.968, 73.157), order = 3 },  -- OB_BallPlatform_a
+    -- ... 6 more checkpoints through Carousel, Ivy clusters, and High Ridge
 }
-LevelData.COINS = {
-    Vector3.new(-350, 12, 80),
-    -- ... etc
-}
-LevelData.FINISH_LINE = Vector3.new(-400, 15, 150)
+LevelData.COINS = { /* 12 coins scattered along the path */ }
+LevelData.FINISH_LINE = Vector3.new(-213.397, 57.085, 153.043)
 LevelData.SPAWN_POSITION = Vector3.new(-304.979, 9.192, 57.847)
 ```
 
 When the server starts, if **zero** tagged parts are found in CollectionService AND `USE_FALLBACK = true`, it spawns invisible detection parts at these positions. These parts are transparent, anchored, and have the correct CollectionService tags — the existing touch handlers connect automatically.
 
-#### Option C: GenerateLevelData Utility (Studio Script)
+#### Option C: GenerateLevelData Utility (Dual-Mode Studio Script)
 
-If you have a properly tagged Studio place and want to auto-generate the LevelData module:
+If you want to auto-generate LevelData from your own level:
 
+**Mode A — Tagged Parts**: If you have parts tagged with `Checkpoint`, `Coin`, and `FinishLine` in Studio, the script exports their positions exactly.
+
+**Mode B — Auto-Suggest**: If **zero** tagged parts exist, the script analyzes all BaseParts in workspace, clusters them by height tiers, and auto-generates a playable course from bounding-box geometry. This works on any level, even raw glTF imports.
+
+Usage:
 1. Add `GenerateLevelData.luau` to `ServerScriptService` in Studio.
-2. Run the game in Studio.
+2. Run the game in Studio (or use the Command bar: `require(script).generate()`).
 3. Copy the printed output into `src/ReplicatedStorage/LevelData.luau`.
-
-This script scans all tagged parts and generates the exact Lua code needed for the fallback.
 
 ---
 
@@ -236,7 +237,7 @@ This script scans all tagged parts and generates the exact Lua code needed for t
 2. Toggle **Enable Studio Access to MarketplaceService** → **ON**
 3. Save.
 
-> **⚠️ CRITICAL**: Before publishing, replace all `id = 0` values in `Config.luau` with real Roblox asset IDs from the Creator Dashboard.
+> **⚠️ PUBLISH_BLOCKER**: Before publishing, search Config.luau for `PUBLISH_BLOCKER` and replace all `id = 0` values with real Roblox asset IDs from the Creator Dashboard.
 
 ---
 
@@ -288,12 +289,14 @@ Any unrecognized client action sent to `PlayerAction.OnServerEvent` is logged wi
 ### Testing the LevelData Fallback
 
 1. Ensure no parts in workspace have `Checkpoint`, `Coin`, or `FinishLine` tags.
-2. Set `LevelData.USE_FALLBACK = true` and fill in positions.
-3. Press F5. Verify:
+2. Verify `LevelData.USE_FALLBACK = true` (already set by default).
+3. The fallback positions are pre-filled from Export.gltf — no manual entry needed.
+4. Press F5. Verify:
    ```text
    [GameServer] No tagged parts found — using LevelData fallback positions
-   [GameServer] Spawned N fallback detection parts from LevelData
+   [GameServer] Spawned 21 fallback detection parts from LevelData
    ```
+5. Run through the course — invisible detection parts work exactly like tagged parts.
 
 ### Testing Daily Rewards
 
@@ -345,14 +348,14 @@ Any unrecognized client action sent to `PlayerAction.OnServerEvent` is logged wi
 * **[`src/ServerScriptService/GameServer.server.luau`](src/ServerScriptService/GameServer.server.luau)**: Core game loop, touch handlers, combo system, daily rewards, monetization, anti-cheat, leaderboard updates.
 * **[`src/ServerScriptService/DataManager.luau`](src/ServerScriptService/DataManager.luau)**: DataStore wrapper with atomic merge, forceOverwrite, NaN guards, exponential backoff retries.
 * **[`src/ServerScriptService/Signal.luau`](src/ServerScriptService/Signal.luau)**: Zero-allocation custom event system with connection pooling.
-* **[`src/ServerScriptService/GenerateLevelData.luau`](src/ServerScriptService/GenerateLevelData.luau)**: Studio utility script to auto-generate LevelData from tagged parts.
-* **[`src/ReplicatedStorage/Config.luau`](src/ReplicatedStorage/Config.luau)**: Central game balance — prices, multipliers, combo tiers, daily rewards, placeholder IDs.
+* **[`src/ServerScriptService/GenerateLevelData.luau`](src/ServerScriptService/GenerateLevelData.luau)**: Studio utility with dual modes — Mode A exports tagged parts exactly; Mode B auto-suggests a playable course from workspace geometry when zero tags exist.
+* **[`src/ReplicatedStorage/Config.luau`](src/ReplicatedStorage/Config.luau)**: Central game balance — prices, multipliers, combo tiers, daily rewards, UI timings, audio levels. Placeholder IDs marked with `PUBLISH_BLOCKER` tags.
 * **[`src/ReplicatedStorage/Types.luau`](src/ReplicatedStorage/Types.luau)**: Shared type definitions for server and client.
-* **[`src/ReplicatedStorage/LevelData.luau`](src/ReplicatedStorage/LevelData.luau)**: Fallback positions for checkpoints, coins, finish line when tags are absent.
+* **[`src/ReplicatedStorage/LevelData.luau`](src/ReplicatedStorage/LevelData.luau)**: Fallback positions (9 checkpoints, 12 coins) derived from actual Export.gltf node coordinates. Used when tags are absent.
 * **[`src/StarterGui/ObbyHUD.client.luau`](src/StarterGui/ObbyHUD.client.luau)**: Glassmorphism HUD with timer, combo, progress bar, daily rewards, notifications, shop UI.
 * **[`src/StarterPlayerScripts/ObbyClient.client.luau`](src/StarterPlayerScripts/ObbyClient.client.luau)**: Particle bursts, ring explosions, camera shake, layered audio with pitch shifts.
 * **[`src/StarterPlayerScripts/ObbyEffects.client.luau`](src/StarterPlayerScripts/ObbyEffects.client.luau)**: Post-processing (bloom, color correction), screen flash, character trails, chromatic aberration, vignette.
-* **[`promo.html`](promo.html)**: Standalone immersive promotional landing page with Three.js, GSAP, Web Audio.
+* **[`index.html`](index.html)**: AAA-grade landing page — cinematic hero, playable mini-obby demo, live analytics dashboards, Three.js world explorer, monetization funnel, leaderboard race, retention heatmap, system architecture diagram.
 * **[`test_signal.luau`](test_signal.luau)**: 4 automated tests for the Signal utility (zero allocations, yielding, concurrent disconnect, tail reconnect).
 * **[`test_datamanager.luau`](test_datamanager.luau)**: 9 automated tests for DataManager (default load, save/load, schema merge, retry success/failure, atomic merge, NaN recovery, settings persistence, daily reward persistence).
 

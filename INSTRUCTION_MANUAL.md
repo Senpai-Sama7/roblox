@@ -271,28 +271,16 @@ The game saves 3 separate things per player:
 
 ### Testing Without a Built Level (LevelData Fallback)
 
-If you have a glTF-imported level with no tags, use the LevelData fallback:
+If you have a glTF-imported level with no tags, the game uses the LevelData fallback system. The fallback positions are **pre-filled** from actual Export.gltf coordinates — no manual entry needed:
 
 1. Open `src/ReplicatedStorage/LevelData.luau`
-2. Set `USE_FALLBACK = true`
-3. Fill in checkpoint positions, coin positions, and finish line position:
-
-```lua
-LevelData.CHECKPOINTS = {
-    { position = Vector3.new(0, 5, 0), order = 1 },
-    { position = Vector3.new(10, 5, 0), order = 2 },
-    { position = Vector3.new(20, 5, 0), order = 3 },
-}
-LevelData.COINS = {
-    Vector3.new(5, 6, 0),
-    Vector3.new(15, 6, 0),
-}
-LevelData.FINISH_LINE = Vector3.new(30, 5, 0)
-```
-
-4. Rebuild (`rojo build -o obby.rbxl`) and re-open in Studio
-5. Press F5. The server should log: `Spawned N fallback detection parts from LevelData`
+2. Verify `USE_FALLBACK = true` (already set by default)
+3. The file contains 9 checkpoints and 12 coins derived from real glTF node positions (SpawnLocation, OB_BallPlatform_a, Carousel, Ivy_Hanging_a clusters)
+4. Rebuild (`rojo build -o obby.rbxl`) and open in Studio
+5. Press F5. The server should log: `Spawned 21 fallback detection parts from LevelData`
 6. Run through the course — the invisible parts work exactly like tagged parts
+
+To customize positions, edit the Vector3 values in `LevelData.luau` directly, or use the GenerateLevelData utility (see below).
 
 ### Testing With Tagged Parts
 
@@ -332,15 +320,20 @@ Press **F5**. Your character spawns, the timer starts. Run through checkpoints i
 
 ### Using GenerateLevelData (Auto-Generate Positions)
 
-If you already have a properly tagged Studio place and want to export the positions:
+GenerateLevelData has **dual modes**:
 
+**Mode A — Tagged Parts**: If your Studio place has parts tagged with `Checkpoint`, `Coin`, and `FinishLine`, the script exports their positions exactly.
+
+**Mode B — Auto-Suggest**: If **zero** tagged parts exist, the script analyzes all BaseParts in workspace, clusters them by height tiers, and auto-generates a playable course from bounding-box geometry. This works on any level, even raw glTF imports.
+
+Usage:
 1. Copy `src/ServerScriptService/GenerateLevelData.luau` into `ServerScriptService` in Studio
-2. Run the game in Studio
+2. Run the game in Studio (or use the Command bar: `require(script).generate()`)
 3. Check the **Output** window — you'll see a complete `LevelData.luau` module printed
 4. Copy that output and paste it into `src/ReplicatedStorage/LevelData.luau`
 5. Rebuild with Rojo
 
-This is useful when your level designer builds the course in Studio and you want to generate the fallback code for the Rojo pipeline.
+The script also prints a **diff** comparing the generated data against the existing LevelData, so you can see exactly what would change.
 
 ### Testing Monetization (Simulate Purchases)
 
@@ -352,7 +345,7 @@ Roblox Studio lets you pretend to buy things without spending real money:
 4. A dialog appears — click **Purchase**
 5. The server's `ProcessReceipt` function fires, and you should see coins added
 
-> **Important**: The gamepass/product IDs in `Config.luau` are all set to `0`. This works in Studio simulation mode (it grants everything for free). When you publish the game, you must replace these with the real Roblox asset IDs from the Creator Dashboard.
+> **Important**: The gamepass/product IDs in `Config.luau` are all set to `0` and marked with `PUBLISH_BLOCKER` comments. This works in Studio simulation mode (it grants everything for free). When you publish the game, you must replace these with the real Roblox asset IDs from the Creator Dashboard. Search for `PUBLISH_BLOCKER` in Config.luau to find all IDs that need replacing.
 
 ### Testing Data Persistence
 
@@ -415,7 +408,7 @@ roblox/                              ← Root folder (this is where you run comm
 ├── test_datamanager.luau            ← 9 automated tests for DataManager
 ├── test_signal.luau                 ← 4 automated tests for Signal utility
 ├── obby.rbxl                        ← Built game file (run rojo build to make this)
-├── promo.html                       ← Immersive promotional landing page
+├── index.html                        ← AAA-grade landing page (playable demo, analytics, 3D map)
 └── src/                             ← All your code lives here
     ├── ReplicatedStorage/           ← Files shared by server AND client
     │   ├── Config.luau              ← Game balance — prices, speeds, multipliers
@@ -446,6 +439,9 @@ Open `src/ReplicatedStorage/Config.luau`. This is where all the **tunable number
 | `DAILY_REWARD_STREAK_MULTIPLIER` | `10` | Extra coins per streak day |
 | `DAILY_REWARD_MAX_STREAK` | `7` | Max streak days |
 | `MAX_SPEED_STUDS_PER_SEC` | `150` | Anti-cheat speed limit |
+| `NOTIFICATION_DURATION` | `2.5` | Default notification popup lifetime (seconds) |
+| `COMBO_DISPLAY_DURATION` | `1.5` | How long combo label stays visible after update (seconds) |
+| `SFX_VOLUME` | `0.5` | Default volume for sound effects |
 | `COSMETICS.TRAILS` | — | Array of purchasable trails (id, name, cost, color) |
 | `COSMETICS.AURAS` | — | Array of purchasable auras (id, name, cost) |
 
@@ -499,12 +495,12 @@ Change any `Color3.fromRGB(R, G, B)` to pick a different color. Use [color picke
 
 ### How to Change Gamepass/Product IDs
 
-Before publishing, you must set real Roblox IDs in `Config.luau`:
+Before publishing, you must set real Roblox IDs in `Config.luau`. Search for `PUBLISH_BLOCKER` to find all placeholder IDs:
 
 ```lua
 Config.GAMEPASSES = {
     DOUBLE_COINS = {
-        id = 12345678,  -- ← Replace 0 with the real ID from Creator Dashboard
+        id = 12345678,  -- PUBLISH_BLOCKER: Replace with actual Gamepass ID
         name = "2x Coins",
         ...
     },
