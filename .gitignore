@@ -1,5 +1,9 @@
 # Build artifacts
 obby.rbxl
+ex.rbxl
+
+# Large asset exports
+Export.gltf
 
 # Rojo generated sourcemap
 sourcemap.json
