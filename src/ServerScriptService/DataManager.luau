@@ -203,7 +203,7 @@ function DataManager.loadPlayerData(player: Player): PlayerData
     return cloneData(DEFAULT_DATA)
 end
 
-function DataManager.savePlayerData(player: Player, data: PlayerData): boolean
+function DataManager.savePlayerData(player: Player, data: PlayerData, forceOverwrite: boolean?): boolean
     -- Pre-sanitize: NaN or non-finite values in the incoming snapshot corrupt the merge.
     local safeData: PlayerData = {
         bestRunTimeSeconds = math.clamp(sanitizeNumber(data.bestRunTimeSeconds, DEFAULT_DATA.bestRunTimeSeconds), 0, 999999),
@@ -214,7 +214,7 @@ function DataManager.savePlayerData(player: Player, data: PlayerData): boolean
     local key = "Player_" .. player.UserId
     local success, _ = retryAsync("UpdateAsync", function()
         return getDataStore():UpdateAsync(key, function(oldData)
-            if not oldData or type(oldData) ~= "table" then
+            if forceOverwrite or not oldData or type(oldData) ~= "table" then
                 return safeData
             end
             local oldBest = sanitizeNumber(oldData.bestRunTimeSeconds or 999999, 999999)
@@ -252,7 +252,11 @@ function DataManager.loadPlayerSettings(player: Player): PlayerSettings
         local merged = cloneSettings(DEFAULT_SETTINGS)
         for k, v in pairs(data) do
             if DEFAULT_SETTINGS[k] ~= nil and type(v) == type(DEFAULT_SETTINGS[k]) then
-                merged[k] = v
+                if type(v) == "table" then
+                    merged[k] = table.clone(v)
+                else
+                    merged[k] = v
+                end
             end
         end
         return merged

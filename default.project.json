@@ -21,6 +21,9 @@
       },
       "Config": {
         "$path": "src/ReplicatedStorage/Config.luau"
+      },
+      "LevelData": {
+        "$path": "src/ReplicatedStorage/LevelData.luau"
       }
     },
     "StarterGui": {
