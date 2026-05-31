@@ -15,7 +15,10 @@ export type PlayerSettings = {
     musicEnabled: boolean,
     trailEnabled: boolean,
     trailColor: { r: number, g: number, b: number },
-    hudScale: number,
+    ownedTrails: { string },
+    ownedAuras: { string },
+    equippedTrail: string?,
+    equippedAura: string?,
 }
 
 export type DailyRewardState = {
