@@ -24,6 +24,7 @@ local RunService = game:GetService("RunService")
 
 local DataManager = require(ServerScriptService:WaitForChild("DataManager"))
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
+local LevelData = require(ReplicatedStorage:WaitForChild("LevelData"))
 
 ----------------------------------------------------------------
 -- Constants
@@ -32,9 +33,6 @@ local RESET_COOLDOWN = 1.0
 local TOUCH_DEBOUNCE = 0.15
 local MAX_ACTION_LENGTH = 64
 local AUTO_START_DELAY = 1.0
-local COIN_COLLECT_RADIUS = 8
-local MAX_SPEED_STUDS_PER_SEC = 150
-local LEADERBOARD_REFRESH = 60
 
 ----------------------------------------------------------------
 -- Remote Events (idempotent)
@@ -97,10 +95,10 @@ type PlayerState = {
 local playerStates: { [Player]: PlayerState } = {}
 local totalCheckpoints: number = 0
 
--- Cooldowns
+-- Cooldowns (separate per touch type to prevent cross-type debouncing)
 local lastResetTime: { [Player]: number } = {}
-local lastTouchTime: { [Player]: number } = {}
-local lastTouchPart: { [Player]: BasePart } = {}
+local lastTouchTime: { [Player]: { [string]: number } } = {}
+local lastTouchPart: { [Player]: { [string]: BasePart? } } = {}
 
 ----------------------------------------------------------------
 -- Helpers
@@ -119,6 +117,10 @@ end
 local cachedSpawnPos: Vector3? = nil
 local function getSpawnPosition(): Vector3
     if cachedSpawnPos then return cachedSpawnPos end
+    if LevelData.SPAWN_POSITION then
+        cachedSpawnPos = LevelData.SPAWN_POSITION
+        return cachedSpawnPos
+    end
     for _, obj in ipairs(workspace:GetDescendants()) do
         if obj:IsA("SpawnLocation") then
             cachedSpawnPos = (obj :: SpawnLocation).Position + Vector3.new(0, 3, 0)
@@ -148,15 +150,27 @@ local function getTodayString(): string
     return string.format("%04d-%02d-%02d", date.year, date.month, date.day)
 end
 
-local function isYesterday(today: string, lastDate: string): boolean
-    if lastDate == "" then return false end
-    local y, m, d = string.match(today, "(%d+)%-(%d+)%-(%d+)")
-    local ly, lm, ld = string.match(lastDate, "(%d+)%-(%d+)%-(%d+)")
-    if not y or not ly then return false end
-    
-    local todayNum = tonumber(y) * 10000 + tonumber(m) * 100 + tonumber(d)
-    local lastNum = tonumber(ly) * 10000 + tonumber(lm) * 100 + tonumber(ld)
-    return todayNum - lastNum == 1
+local function parseDateString(dateStr: string): { year: number, month: number, day: number }?
+    local y, m, d = string.match(dateStr, "(%d+)%-(%d+)%-(%d+)")
+    if not y then return nil end
+    return { year = tonumber(y) :: number, month = tonumber(m) :: number, day = tonumber(d) :: number }
+end
+
+local function isYesterday(todayStr: string, lastDateStr: string): boolean
+    if lastDateStr == "" then return false end
+    local todayParsed = parseDateString(todayStr)
+    local lastParsed = parseDateString(lastDateStr)
+    if not todayParsed or not lastParsed then return false end
+
+    local function toDayNumber(p: { year: number, month: number, day: number }): number
+        -- Approximate day number for comparison; sufficient for streak logic
+        local a = math.floor((14 - p.month) / 12)
+        local y = p.year + 4800 - a
+        local m = p.month + 12 * a - 3
+        return p.day + math.floor((153 * m + 2) / 5) + 365 * y + math.floor(y / 4) - math.floor(y / 100) + math.floor(y / 400) - 32045
+    end
+
+    return toDayNumber(todayParsed) - toDayNumber(lastParsed) == 1
 end
 
 ----------------------------------------------------------------
@@ -393,6 +407,23 @@ end
 ----------------------------------------------------------------
 -- Touch handlers
 ----------------------------------------------------------------
+local function isDebounced(player: Player, touchType: string, part: BasePart): boolean
+    local now = os.clock()
+    if not lastTouchTime[player] then
+        lastTouchTime[player] = {}
+        lastTouchPart[player] = {}
+    end
+    local playerTimes = lastTouchTime[player]
+    local playerParts = lastTouchPart[player]
+    if playerTimes[touchType] and playerParts[touchType] == part
+        and (now - playerTimes[touchType]) < TOUCH_DEBOUNCE then
+        return true
+    end
+    playerTimes[touchType] = now
+    playerParts[touchType] = part
+    return false
+end
+
 local function onCheckpointTouched(cp: BasePart, hit: BasePart)
     local character = hit.Parent
     if not character then return end
@@ -403,12 +434,7 @@ local function onCheckpointTouched(cp: BasePart, hit: BasePart)
     if not player then return end
 
     local now = os.clock()
-    if lastTouchTime[player] and lastTouchPart[player] == cp
-        and (now - lastTouchTime[player]) < TOUCH_DEBOUNCE then
-        return
-    end
-    lastTouchTime[player] = now
-    lastTouchPart[player] = cp
+    if isDebounced(player, "checkpoint", cp) then return end
 
     local state = playerStates[player]
     if not state or not state.isRunning then return end
@@ -429,7 +455,7 @@ local function onCheckpointTouched(cp: BasePart, hit: BasePart)
             end
         else
             local speed = distance / timeBetween
-            if speed > MAX_SPEED_STUDS_PER_SEC then
+            if speed > Config.MAX_SPEED_STUDS_PER_SEC then
                 warn(string.format("[Anti-Cheat] %s speed %.1f to CP %d - blocked",
                     player.Name, speed, order))
                 return
@@ -468,13 +494,7 @@ local function onCoinTouched(coin: BasePart, hit: BasePart)
     local player = Players:GetPlayerFromCharacter(character)
     if not player then return end
 
-    local now = os.clock()
-    if lastTouchTime[player] and lastTouchPart[player] == coin
-        and (now - lastTouchTime[player]) < TOUCH_DEBOUNCE then
-        return
-    end
-    lastTouchTime[player] = now
-    lastTouchPart[player] = coin
+    if isDebounced(player, "coin", coin) then return end
 
     local state = playerStates[player]
     if not state or not state.isRunning then return end
@@ -487,7 +507,7 @@ local function onCoinTouched(coin: BasePart, hit: BasePart)
         return
     end
     local dist = (coin.Position - hrp.Position).Magnitude
-    if dist > COIN_COLLECT_RADIUS then
+    if dist > Config.COIN_COLLECT_RADIUS then
         warn(string.format("[Anti-Cheat] %s coin from %.1f studs - blocked",
             player.Name, dist))
         return
@@ -516,12 +536,7 @@ local function onFinishTouched(finishPart: BasePart, hit: BasePart)
     if not player then return end
 
     local now = os.clock()
-    if lastTouchTime[player] and lastTouchPart[player] == finishPart
-        and (now - lastTouchTime[player]) < TOUCH_DEBOUNCE then
-        return
-    end
-    lastTouchTime[player] = now
-    lastTouchPart[player] = finishPart
+    if isDebounced(player, "finish", finishPart) then return end
 
     local state = playerStates[player]
     if not state or not state.isRunning then return end
@@ -548,7 +563,7 @@ local function onFinishTouched(finishPart: BasePart, hit: BasePart)
             end
         else
             local speed = distance / timeBetween
-            if speed > MAX_SPEED_STUDS_PER_SEC then
+            if speed > Config.MAX_SPEED_STUDS_PER_SEC then
                 warn(string.format("[Anti-Cheat] %s finish speed %.1f - blocked", player.Name, speed))
                 return
             end
@@ -584,6 +599,74 @@ local function disconnectPart(instance: Instance)
         connections[instance]:Disconnect()
         connections[instance] = nil
     end
+end
+
+local function spawnFallbackParts()
+    local created = 0
+
+    -- Spawn checkpoints from LevelData
+    for _, cpData in ipairs(LevelData.CHECKPOINTS) do
+        local part = Instance.new("Part")
+        part.Name = "Checkpoint_Fallback_" .. tostring(cpData.order)
+        part.Size = Vector3.new(12, 2, 12)
+        part.Position = cpData.position
+        part.Anchored = true
+        part.CanCollide = false
+        part.Transparency = 1
+        part.Material = Enum.Material.Neon
+        part.Parent = workspace
+        part:SetAttribute("Order", cpData.order)
+        CollectionService:AddTag(part, "Checkpoint")
+        created += 1
+    end
+
+    -- Spawn coins from LevelData
+    for i, pos in ipairs(LevelData.COINS) do
+        local part = Instance.new("Part")
+        part.Name = "Coin_Fallback_" .. tostring(i)
+        part.Size = Vector3.new(3, 3, 3)
+        part.Shape = Enum.PartType.Ball
+        part.Position = pos
+        part.Anchored = true
+        part.CanCollide = false
+        part.Transparency = 1
+        part.Material = Enum.Material.Neon
+        part.Parent = workspace
+        CollectionService:AddTag(part, "Coin")
+        created += 1
+    end
+
+    -- Spawn finish line from LevelData
+    if LevelData.FINISH_LINE then
+        local part = Instance.new("Part")
+        part.Name = "FinishLine_Fallback"
+        part.Size = Vector3.new(24, 10, 4)
+        part.Position = LevelData.FINISH_LINE
+        part.Anchored = true
+        part.CanCollide = false
+        part.Transparency = 1
+        part.Material = Enum.Material.Neon
+        part.Parent = workspace
+        CollectionService:AddTag(part, "FinishLine")
+        created += 1
+    end
+
+    if created > 0 then
+        print(string.format("[GameServer] Spawned %d fallback detection parts from LevelData", created))
+    end
+end
+
+-- Check if we should use LevelData fallback
+local taggedCheckpoints = #CollectionService:GetTagged("Checkpoint")
+local taggedCoins = #CollectionService:GetTagged("Coin")
+local taggedFinishLines = #CollectionService:GetTagged("FinishLine")
+
+if taggedCheckpoints == 0 and taggedCoins == 0 and taggedFinishLines == 0 and LevelData.USE_FALLBACK then
+    print("[GameServer] No tagged parts found — using LevelData fallback positions")
+    spawnFallbackParts()
+else
+    print(string.format("[GameServer] Found %d checkpoints, %d coins, %d finish lines via CollectionService",
+        taggedCheckpoints, taggedCoins, taggedFinishLines))
 end
 
 for _, cp in ipairs(CollectionService:GetTagged("Checkpoint")) do connectPart(cp) end
@@ -641,7 +724,8 @@ playerActionEvent.OnServerEvent:Connect(function(player: Player, action: string,
                         state.settings.equippedTrail = trailId
                         refreshLeaderstats(player, state)
                         task.spawn(function()
-                            DataManager.savePlayerData(player, DataManager.cloneData(state.data))
+                            -- forceOverwrite = true: purchases must not be undone by max() merge
+                            DataManager.savePlayerData(player, DataManager.cloneData(state.data), true)
                             DataManager.savePlayerSettings(player, DataManager.cloneSettings(state.settings))
                         end)
                         uiUpdateEvent:FireClient(player, {
@@ -658,6 +742,44 @@ playerActionEvent.OnServerEvent:Connect(function(player: Player, action: string,
                 break
             end
         end
+    elseif action == "BuyAura" then
+        local auraId = ...
+        if type(auraId) ~= "string" then return end
+        for _, aura in ipairs(Config.COSMETICS.AURAS) do
+            if aura.id == auraId then
+                if state.data.totalCoins >= aura.cost then
+                    local alreadyOwned = false
+                    for _, owned in ipairs(state.settings.ownedAuras) do
+                        if owned == auraId then
+                            alreadyOwned = true
+                            break
+                        end
+                    end
+                    if not alreadyOwned then
+                        state.data.totalCoins -= aura.cost
+                        table.insert(state.settings.ownedAuras, auraId)
+                        state.settings.equippedAura = auraId
+                        refreshLeaderstats(player, state)
+                        task.spawn(function()
+                            DataManager.savePlayerData(player, DataManager.cloneData(state.data), true)
+                            DataManager.savePlayerSettings(player, DataManager.cloneSettings(state.settings))
+                        end)
+                        uiUpdateEvent:FireClient(player, {
+                            type = "PurchaseSuccess",
+                            data = { item = auraId, type = "aura", cost = aura.cost },
+                        })
+                    end
+                else
+                    uiUpdateEvent:FireClient(player, {
+                        type = "PurchaseFailed",
+                        data = { reason = "not_enough_coins" },
+                    })
+                end
+                break
+            end
+        end
+    else
+        warn(string.format("[GameServer] Unknown action from %s: %s", player.Name, action))
     end
 end)
 
@@ -665,7 +787,16 @@ end)
 -- Developer Products (Coin Packs)
 -- CRITICAL: Receipt journal prevents duplicate grants on Roblox retry.
 ----------------------------------------------------------------
-local processedReceipts: { [string]: boolean } = {}
+local processedReceipts: { [string]: number } = {}
+
+local function cleanProcessedReceipts()
+    local cutoff = os.clock() - 3600 -- 1 hour retention
+    for id, timestamp in pairs(processedReceipts) do
+        if timestamp < cutoff then
+            processedReceipts[id] = nil
+        end
+    end
+end
 
 MarketplaceService.ProcessReceipt = function(receiptInfo)
     -- Deduplication: if we've already processed this PurchaseId, grant immediately
@@ -691,10 +822,11 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
             refreshLeaderstats(player, state)
             
             -- Mark as processed BEFORE async save so retry doesn't re-grant
-            processedReceipts[purchaseId] = true
+            processedReceipts[purchaseId] = os.clock()
             
             task.spawn(function()
-                DataManager.savePlayerData(player, DataManager.cloneData(state.data))
+                -- forceOverwrite = true: dev product grants must not be merged away
+                DataManager.savePlayerData(player, DataManager.cloneData(state.data), true)
             end)
             
             uiUpdateEvent:FireClient(player, {
@@ -784,6 +916,12 @@ Players.PlayerAdded:Connect(function(player: Player)
             },
         })
         startRun(player)
+
+        -- Auto-show daily reward popup if not yet claimed today
+        local today = getTodayString()
+        if state.daily.lastClaimDate ~= today then
+            checkDailyReward(player, state)
+        end
     end)
 
     player.CharacterAdded:Connect(function(character)
@@ -818,6 +956,9 @@ Players.PlayerRemoving:Connect(function(player: Player)
     lastResetTime[player] = nil
     lastTouchTime[player] = nil
     lastTouchPart[player] = nil
+    
+    -- Periodic receipt cleanup
+    cleanProcessedReceipts()
 end)
 
 ----------------------------------------------------------------
@@ -864,5 +1005,15 @@ end)
 ----------------------------------------------------------------
 -- Init
 ----------------------------------------------------------------
+-- Init
+----------------------------------------------------------------
 countCheckpoints()
+
+task.spawn(function()
+    while true do
+        cleanProcessedReceipts()
+        task.wait(600)
+    end
+end)
+
 print("[GameServer] Brainrot Checkpoint Obby S-TIER initialized!")

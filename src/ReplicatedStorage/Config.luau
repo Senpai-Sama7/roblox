@@ -12,27 +12,26 @@ local Config = {}
 Config.COIN_VALUE_PER_COIN = 1
 Config.BASE_COIN_MULTIPLIER = 1.0
 Config.PREMIUM_COIN_BONUS = 0.20 -- +20% for Roblox Premium members
--- NOTE: COMBO_COIN_BONUS is reserved for future use. Current combo multipliers come from COMBO_TIERS.
-Config.COMBO_COIN_BONUS = 0.10
 
 ----------------------------------------------------------------
 -- Gamepasses (Developer Products handled via MarketplaceService)
 ----------------------------------------------------------------
+-- WARNING: All id=0 values are placeholders. Replace with actual Roblox asset IDs before publishing.
 Config.GAMEPASSES = {
     DOUBLE_COINS = {
-        id = 0, -- Replace with actual asset ID when published
+        id = 0, -- Replace with actual Gamepass ID when published
         name = "2x Coins",
         description = "Double all coin earnings forever",
         multiplier = 2.0,
     },
     VIP = {
-        id = 0,
+        id = 0, -- Replace with actual Gamepass ID when published
         name = "VIP",
-        description = "Golden name, rainbow trail, +10% speed, VIP chat tag",
+        description = "Golden name, rainbow trail, +50% coins",
         coinBonus = 0.50, -- +50% coins
     },
     SKIP_CHECKPOINT = {
-        id = 0,
+        id = 0, -- Replace with actual Gamepass ID when published
         name = "Skip Checkpoint",
         description = "Skip 1 checkpoint per run",
     },
@@ -41,6 +40,7 @@ Config.GAMEPASSES = {
 ----------------------------------------------------------------
 -- Developer Products
 ----------------------------------------------------------------
+-- WARNING: All id=0 values are placeholders. Replace with actual Developer Product IDs before publishing.
 Config.DEV_PRODUCTS = {
     COINS_SMALL = { id = 0, name = "Coin Pack (100)", amount = 100 },
     COINS_MEDIUM = { id = 0, name = "Coin Pack (500)", amount = 500 },
