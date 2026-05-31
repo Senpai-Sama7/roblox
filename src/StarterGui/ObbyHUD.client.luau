@@ -368,7 +368,7 @@ end
 
 local function showNotification(msg: string, color: Color3?, dur: number?)
     local c = color or C.green
-    local d = dur or 2.5
+    local d = dur or Config.NOTIFICATION_DURATION
     
     if isNotifActive then
         table.insert(notifQueue, { msg = msg, color = c, dur = d })
@@ -663,6 +663,13 @@ uiUpdate.OnClientEvent:Connect(function(payload: UIPayload)
             task.delay(0.2, function()
                 TweenService:Create(comboLabel, TweenInfo.new(0.3, Enum.EasingStyle.Elastic), { TextSize = 14 }):Play()
             end)
+            
+            -- Auto-hide combo label after display duration
+            task.delay(Config.COMBO_DISPLAY_DURATION, function()
+                if comboLabel and comboLabel.Parent then
+                    comboLabel.Visible = false
+                end
+            end)
         end
 
     elseif t == "CoinCollected" then
@@ -716,7 +723,7 @@ uiUpdate.OnClientEvent:Connect(function(payload: UIPayload)
         if d.color == "red" then color = C.red
         elseif d.color == "gold" then color = C.gold
         elseif d.color == "blue" then color = C.accent end
-        showNotification(d.message or "", color, d.duration or 2.5)
+        showNotification(d.message or "", color, d.duration or Config.NOTIFICATION_DURATION)
 
     elseif t == "PurchaseSuccess" then
         showNotification("Purchased: " .. (d.item or ""), C.green, 3)

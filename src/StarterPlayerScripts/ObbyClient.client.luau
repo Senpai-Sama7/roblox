@@ -151,7 +151,7 @@ end
 local function playTone(pitch: number?, volume: number?, soundId: string?)
     local sound = Instance.new("Sound")
     sound.SoundId = soundId or "rbxasset://sounds/impact_water.mp3"
-    sound.Volume = volume or 0.5
+    sound.Volume = volume or Config.SFX_VOLUME
     sound.PlaybackSpeed = pitch or 1.2
     sound.Parent = workspace
     local destroyed = false

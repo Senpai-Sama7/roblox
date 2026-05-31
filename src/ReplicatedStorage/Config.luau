@@ -14,33 +14,37 @@ Config.BASE_COIN_MULTIPLIER = 1.0
 Config.PREMIUM_COIN_BONUS = 0.20 -- +20% for Roblox Premium members
 
 ----------------------------------------------------------------
--- Gamepasses (Developer Products handled via MarketplaceService)
+-- Gamepasses (One-time purchase, permanent benefit)
+--
+-- PUBLISH_BLOCKER: Replace all id=0 values below with real Roblox asset IDs
+-- from Creator Dashboard > Monetization > Gamepasses before going live.
 ----------------------------------------------------------------
--- WARNING: All id=0 values are placeholders. Replace with actual Roblox asset IDs before publishing.
 Config.GAMEPASSES = {
     DOUBLE_COINS = {
-        id = 0, -- Replace with actual Gamepass ID when published
+        id = 0, -- PUBLISH_BLOCKER: Replace with actual Gamepass ID
         name = "2x Coins",
         description = "Double all coin earnings forever",
         multiplier = 2.0,
     },
     VIP = {
-        id = 0, -- Replace with actual Gamepass ID when published
+        id = 0, -- PUBLISH_BLOCKER: Replace with actual Gamepass ID
         name = "VIP",
         description = "Golden name, rainbow trail, +50% coins",
         coinBonus = 0.50, -- +50% coins
     },
     SKIP_CHECKPOINT = {
-        id = 0, -- Replace with actual Gamepass ID when published
+        id = 0, -- PUBLISH_BLOCKER: Replace with actual Gamepass ID
         name = "Skip Checkpoint",
         description = "Skip 1 checkpoint per run",
     },
 }
 
 ----------------------------------------------------------------
--- Developer Products
+-- Developer Products (Consumable)
+--
+-- PUBLISH_BLOCKER: Replace all id=0 values below with real Roblox asset IDs
+-- from Creator Dashboard > Monetization > Developer Products before going live.
 ----------------------------------------------------------------
--- WARNING: All id=0 values are placeholders. Replace with actual Developer Product IDs before publishing.
 Config.DEV_PRODUCTS = {
     COINS_SMALL = { id = 0, name = "Coin Pack (100)", amount = 100 },
     COINS_MEDIUM = { id = 0, name = "Coin Pack (500)", amount = 500 },
@@ -74,30 +78,17 @@ Config.COIN_COLLECT_RADIUS = 8  -- Must match GameServer.server.luau COIN_COLLEC
 Config.FINISH_SPEED_CHECK = true
 
 ----------------------------------------------------------------
--- Leaderboards
-----------------------------------------------------------------
--- NOTE: LEADERBOARD_SIZE and LEADERBOARD_REFRESH_INTERVAL are reserved for
--- future leaderboard query/display logic (e.g., in-game leaderboard GUI).
-Config.LEADERBOARD_SIZE = 50
-Config.LEADERBOARD_REFRESH_INTERVAL = 60 -- seconds
-
-----------------------------------------------------------------
 -- UI / UX
 ----------------------------------------------------------------
--- NOTE: HUD_ANIMATION_SPEED, NOTIFICATION_DURATION, and COMBO_DISPLAY_DURATION
--- are reserved for future settings-menu integration. Currently hardcoded in ObbyHUD.client.luau.
-Config.HUD_ANIMATION_SPEED = 0.3
-Config.NOTIFICATION_DURATION = 2.5
-Config.COMBO_DISPLAY_DURATION = 1.5
-Config.PROGRESS_BAR_ANIMATION = 0.4 -- Used in ObbyHUD.client.luau progress bar tween
+Config.NOTIFICATION_DURATION = 2.5      -- Default notification popup lifetime (seconds)
+Config.COMBO_DISPLAY_DURATION = 1.5     -- How long combo label stays visible after update (seconds)
+Config.PROGRESS_BAR_ANIMATION = 0.4     -- Progress bar tween duration (seconds)
 
 ----------------------------------------------------------------
 -- Audio
 ----------------------------------------------------------------
--- NOTE: SFX_VOLUME and MUSIC_VOLUME are reserved for future volume-control UI.
-Config.SFX_VOLUME = 0.5
-Config.MUSIC_VOLUME = 0.3
-Config.COMBO_PITCH_INCREMENT = 0.1 -- Each combo tier raises pitch (used in ObbyClient.client.luau)
+Config.SFX_VOLUME = 0.5                 -- Default volume for sound effects (0.0 - 1.0)
+Config.COMBO_PITCH_INCREMENT = 0.1      -- Each combo tier raises pitch (used in ObbyClient.client.luau)
 
 ----------------------------------------------------------------
 -- Cosmetics (Coin Cost)
